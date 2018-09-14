@@ -1,6 +1,6 @@
 """Provides an API to interact with ZoneMinder"""
 import logging
-from typing import Optional, List
+from typing import List
 from urllib.parse import urljoin
 
 import requests
@@ -12,7 +12,6 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class ZoneMinder:
-
     DEFAULT_SERVER_PATH = '/zm/'
     DEFAULT_ZMS_PATH = '/zm/cgi-bin/nph-zms'
     DEFAULT_TIMEOUT = 10
@@ -70,7 +69,6 @@ class ZoneMinder:
         """Perform a request to the ZoneMinder API."""
         # Since the API uses sessions that expire, sometimes we need to re-auth
         # if the call fails.
-        _: int
         for _ in range(ZoneMinder.LOGIN_RETRIES):
             req = requests.request(
                 method, urljoin(self._server_url, api_url), data=data,
@@ -92,6 +90,7 @@ class ZoneMinder:
                               'to decode "%s"', req.text)
 
     def get_monitors(self) -> List[Monitor]:
+        """Gets a list of Monitors from the ZoneMinder API"""
         raw_monitors = self._zm_request('get', ZoneMinder.MONITOR_URL)
         if not raw_monitors:
             _LOGGER.warning("Could not fetch monitors from ZoneMinder")
