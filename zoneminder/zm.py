@@ -17,8 +17,6 @@ class ZoneMinder:
     DEFAULT_ZMS_PATH = '/zm/cgi-bin/nph-zms'
     DEFAULT_TIMEOUT = 10
     LOGIN_RETRIES = 2
-    # From ZoneMinder's web/includes/config.php.in
-    ZM_STATE_ALARM = 2
     MONITOR_URL = 'api/monitors.json'
 
     def __init__(self, server_host, username, password,
@@ -60,8 +58,12 @@ class ZoneMinder:
 
         return True
 
-    def _zm_request(self, method: str, api_url: str, data: dict=None):
-        """Perform a request to the Zoneminder API."""
+    def get_state(self, api_url) -> dict:
+        """Performs a GET request on the specified ZoneMinder API URL"""
+        return self._zm_request('get', api_url)
+
+    def _zm_request(self, method, api_url, data=None) -> dict:
+        """Perform a request to the ZoneMinder API."""
         # Since the API uses sessions that expire, sometimes we need to re-auth
         # if the call fails.
         _: int
@@ -84,20 +86,6 @@ class ZoneMinder:
         except ValueError:
             _LOGGER.exception('JSON decode exception caught while attempting '
                               'to decode "%s"', req.text)
-
-    def is_recording(self, monitor_id) -> Optional[bool]:
-        """Indicates if the requested monitor is currently recording"""
-        status_response = self._zm_request(
-            'get',
-            'api/monitors/alarm/id:{}/command:status.json'.format(monitor_id)
-        )
-
-        if not status_response:
-            _LOGGER.warning('Could not get status for monitor {}'.format(
-                monitor_id))
-            return None
-
-        return int(status_response.get('status')) == ZoneMinder.ZM_STATE_ALARM
 
     def get_monitors(self) -> List[Monitor]:
         raw_monitors = self._zm_request('get', ZoneMinder.MONITOR_URL)

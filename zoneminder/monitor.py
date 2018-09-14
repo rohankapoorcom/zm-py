@@ -1,7 +1,11 @@
 import logging
+from typing import Optional
 from urllib.parse import urlencode
 
 _LOGGER = logging.getLogger(__name__)
+
+# From ZoneMinder's web/includes/config.php.in
+STATE_ALARM = 2
 
 
 class Monitor:
@@ -29,6 +33,9 @@ class Monitor:
     def function(self) -> str:
         return self._monitor_function
 
+    def set_function(self, new_function) -> bool:
+        pass
+
     @property
     def controllable(self) -> bool:
         return self._controllable
@@ -44,8 +51,19 @@ class Monitor:
         return self._still_image_url
 
     @property
-    def is_recording(self) -> bool:
-        """Indicates where the camera is currently recording"""
+    def is_recording(self) -> Optional[bool]:
+        """Indicates where the Monitor is currently recording"""
+        status_response = self._client.get_state(
+            'api/monitors/alarm/id:{}/command:status.json'.format(
+                self._monitor_id)
+        )
+
+        if not status_response:
+            _LOGGER.warning('Could not get status for monitor {}'.format(
+                self._monitor_id))
+            return None
+
+        return int(status_response.get('status')) == STATE_ALARM
 
     def _build_image_url(self, monitor, mode) -> str:
         """Build and return a ZoneMinder camera image url"""
