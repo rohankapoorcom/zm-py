@@ -105,7 +105,6 @@ class ZoneMinder:
             _LOGGER.warning("Could not fetch monitors from ZoneMinder")
             return []
 
-        zms_url = urljoin(self._server_url, self._zms_path)
         monitors = []
         for i in raw_monitors['monitors']:
             m = i['Monitor']
@@ -116,6 +115,22 @@ class ZoneMinder:
 
             _LOGGER.info("Initializing camera %s", m['Id'])
             monitors.append(
-                Monitor(m, zms_url, self._username, self._password))
+                Monitor(self, m))
 
         return monitors
+
+    def get_zms_url(self) -> str:
+        """Gets the url to the current ZMS instance"""
+        return urljoin(self._server_url, self._zms_path)
+
+    def get_url_with_auth(self, url) -> str:
+        """Adds the auth credentials to a url (if needed)"""
+        if not self._username:
+            return url
+
+        url += '&user={:s}'.format(self._username)
+
+        if not self._password:
+            return url
+
+        return url + '&pass={:s}'.format(self._password)
