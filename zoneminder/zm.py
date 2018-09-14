@@ -62,13 +62,17 @@ class ZoneMinder:
         """Performs a GET request on the specified ZoneMinder API URL"""
         return self._zm_request('get', api_url)
 
+    def change_state(self, api_url, post_data) -> dict:
+        """Performs a POST request on the specific ZoneMinder API Url"""
+        return self._zm_request('post', api_url, post_data)
+
     def _zm_request(self, method, api_url, data=None) -> dict:
         """Perform a request to the ZoneMinder API."""
         # Since the API uses sessions that expire, sometimes we need to re-auth
         # if the call fails.
         _: int
         for _ in range(ZoneMinder.LOGIN_RETRIES):
-            req: Response = requests.request(
+            req = requests.request(
                 method, urljoin(self._server_url, api_url), data=data,
                 cookies=self._cookies, timeout=ZoneMinder.DEFAULT_TIMEOUT,
                 verify=self._verify_ssl)

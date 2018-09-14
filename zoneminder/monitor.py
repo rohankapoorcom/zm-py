@@ -1,4 +1,5 @@
 import logging
+from enum import Enum
 from typing import Optional
 from urllib.parse import urlencode
 
@@ -8,13 +9,22 @@ _LOGGER = logging.getLogger(__name__)
 STATE_ALARM = 2
 
 
+class MonitorState(Enum):
+    NONE = None
+    MONITOR = 'Monitor'
+    MODECT = 'Modect'
+    RECORD = 'Record'
+    MOCORD = 'Mocord'
+    NODECT = 'Nodect'
+
+
 class Monitor:
 
     def __init__(self, client, raw_monitor):
         self._client = client
         self._monitor_id = int(raw_monitor['Id'])
         self._name = raw_monitor['Name']
-        self._monitor_function = raw_monitor['Function']
+        self._monitor_function = MonitorState(raw_monitor['Function'])
         self._controllable = bool(raw_monitor['Controllable'])
         self._mjpeg_image_url = self._build_image_url(
             raw_monitor, 'jpeg')
@@ -30,11 +40,15 @@ class Monitor:
         return self._name
 
     @property
-    def function(self) -> str:
+    def function(self) -> MonitorState:
         return self._monitor_function
 
     def set_function(self, new_function) -> bool:
-        pass
+        self._client.change_state(
+            'api/monitors/{}.json'.format(self._monitor_id),
+            {'Monitor[Function]': new_function.value})
+        self._monitor_function = new_function
+        return True
 
     @property
     def controllable(self) -> bool:
