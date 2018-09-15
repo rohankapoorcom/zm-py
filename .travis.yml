@@ -1,0 +1,18 @@
+sudo: false
+
+matrix:
+  fast_finish: true
+  include:
+    - python: "3.5.3"
+      env: TOXENV=lint
+      dist: xenial
+    - python: "3.5.3"
+      env: TOXENV=pylint
+      dist: xenial
+    - python: "3.5.3"
+      env: TOXENV=typing
+      dist: xenial
+
+install: pip install -U tox
+language: python
+script: tox
