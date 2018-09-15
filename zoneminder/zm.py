@@ -4,7 +4,6 @@ from typing import List
 from urllib.parse import urljoin
 
 import requests
-from requests import Response
 
 from zoneminder.monitor import Monitor
 
@@ -42,7 +41,7 @@ class ZoneMinder:
             login_post['password'] = self._password
 
         req = requests.post(urljoin(self._server_url, '/index.php'),
-                                      data=login_post, verify=self._verify_ssl)
+                            data=login_post, verify=self._verify_ssl)
         self._cookies = req.cookies
 
         # Login calls returns a 200 response on both failure and success.
