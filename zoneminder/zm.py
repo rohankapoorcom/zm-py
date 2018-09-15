@@ -1,4 +1,4 @@
-"""Provides an API to interact with ZoneMinder"""
+"""An API Client to interact with ZoneMinder."""
 import logging
 from typing import List
 from urllib.parse import urljoin
@@ -12,6 +12,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class ZoneMinder:
+    """The ZoneMinder API client itself. Create one of these to begin."""
+
     DEFAULT_SERVER_PATH = '/zm/'
     DEFAULT_ZMS_PATH = '/zm/cgi-bin/nph-zms'
     DEFAULT_TIMEOUT = 10
@@ -19,8 +21,9 @@ class ZoneMinder:
     MONITOR_URL = 'api/monitors.json'
 
     def __init__(self, server_host, username, password,
-                 server_path = DEFAULT_SERVER_PATH,
+                 server_path=DEFAULT_SERVER_PATH,
                  zms_path=DEFAULT_ZMS_PATH, verify_ssl=True) -> None:
+        """Create a ZoneMinder API Client."""
         self._server_url = urljoin(server_host, server_path)
         self._username = username
         self._password = password
@@ -58,11 +61,11 @@ class ZoneMinder:
         return True
 
     def get_state(self, api_url) -> dict:
-        """Performs a GET request on the specified ZoneMinder API URL"""
+        """Perform a GET request on the specified ZoneMinder API URL."""
         return self._zm_request('get', api_url)
 
     def change_state(self, api_url, post_data) -> dict:
-        """Performs a POST request on the specific ZoneMinder API Url"""
+        """Perform a POST request on the specific ZoneMinder API Url."""
         return self._zm_request('post', api_url, post_data)
 
     def _zm_request(self, method, api_url, data=None) -> dict:
@@ -88,9 +91,10 @@ class ZoneMinder:
         except ValueError:
             _LOGGER.exception('JSON decode exception caught while attempting '
                               'to decode "%s"', req.text)
+            return {}
 
     def get_monitors(self) -> List[Monitor]:
-        """Gets a list of Monitors from the ZoneMinder API"""
+        """Get a list of Monitors from the ZoneMinder API."""
         raw_monitors = self._zm_request('get', ZoneMinder.MONITOR_URL)
         if not raw_monitors:
             _LOGGER.warning("Could not fetch monitors from ZoneMinder")
@@ -98,24 +102,24 @@ class ZoneMinder:
 
         monitors = []
         for i in raw_monitors['monitors']:
-            m = i['Monitor']
+            raw_monitor = i['Monitor']
 
-            if m['Function'] == 'None':
-                _LOGGER.info("Skipping camera %s", m['Id'])
+            if raw_monitor['Function'] == 'None':
+                _LOGGER.info("Skipping camera %s", raw_monitor['Id'])
                 continue
 
-            _LOGGER.info("Initializing camera %s", m['Id'])
+            _LOGGER.info("Initializing camera %s", raw_monitor['Id'])
             monitors.append(
-                Monitor(self, m))
+                Monitor(self, raw_monitor))
 
         return monitors
 
     def get_zms_url(self) -> str:
-        """Gets the url to the current ZMS instance"""
+        """Get the url to the current ZMS instance."""
         return urljoin(self._server_url, self._zms_path)
 
     def get_url_with_auth(self, url) -> str:
-        """Adds the auth credentials to a url (if needed)"""
+        """Add the auth credentials to a url (if needed)."""
         if not self._username:
             return url
 
