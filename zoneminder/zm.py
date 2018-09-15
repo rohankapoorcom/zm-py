@@ -41,7 +41,7 @@ class ZoneMinder:
         if self._password:
             login_post['password'] = self._password
 
-        req: Response = requests.post(urljoin(self._server_url, '/index.php'),
+        req = requests.post(urljoin(self._server_url, '/index.php'),
                                       data=login_post, verify=self._verify_ssl)
         self._cookies = req.cookies
 
