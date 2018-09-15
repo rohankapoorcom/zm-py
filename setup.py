@@ -5,13 +5,14 @@ long_description = open('README.md').read()
 
 setup(
     name='zm-py',
-    version='0.0.1',
+    version='0.0.2',
     license='Apache Software License',
     url='https://github.com/rohankapoorcom/zm-py',
     author='Rohan Kapoor',
     author_email='rohan@rohankapoor.com',
-    description='A loose python wrapper around the Zoneminder REST API.',
+    description='A loose python wrapper around the ZoneMinder REST API.',
     long_description=long_description,
+    long_description_content_type='text/markdown',
     packages=find_packages(),
     zip_safe=False,
     include_package_data=True,
