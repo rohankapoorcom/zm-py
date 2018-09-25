@@ -1,11 +1,12 @@
 """An API Client to interact with ZoneMinder."""
 import logging
-from typing import List
+from typing import List, Optional
 from urllib.parse import urljoin
 
 import requests
 
 from zoneminder.monitor import Monitor
+from zoneminder.run_state import RunState
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -68,14 +69,15 @@ class ZoneMinder:
         """Perform a POST request on the specific ZoneMinder API Url."""
         return self._zm_request('post', api_url, post_data)
 
-    def _zm_request(self, method, api_url, data=None) -> dict:
+    def _zm_request(self, method, api_url, data=None,
+                    timeout=DEFAULT_TIMEOUT) -> dict:
         """Perform a request to the ZoneMinder API."""
         # Since the API uses sessions that expire, sometimes we need to re-auth
         # if the call fails.
         for _ in range(ZoneMinder.LOGIN_RETRIES):
             req = requests.request(
                 method, urljoin(self._server_url, api_url), data=data,
-                cookies=self._cookies, timeout=ZoneMinder.DEFAULT_TIMEOUT,
+                cookies=self._cookies, timeout=timeout,
                 verify=self._verify_ssl)
 
             if not req.ok:
@@ -104,10 +106,45 @@ class ZoneMinder:
         for i in raw_monitors['monitors']:
             raw_monitor = i['Monitor']
             _LOGGER.info("Initializing camera %s", raw_monitor['Id'])
-            monitors.append(
-                Monitor(self, raw_monitor))
+            monitors.append(Monitor(self, raw_monitor))
 
         return monitors
+
+    def get_run_states(self) -> List[RunState]:
+        """Get a list of RunStates from the ZoneMinder API."""
+        raw_states = self.get_state('api/states.json')
+        if not raw_states:
+            _LOGGER.warning("Could not fetch runstates from ZoneMinder")
+            return []
+
+        run_states = []
+        for i in raw_states['states']:
+            raw_state = i['State']
+            _LOGGER.info("Initializing runstate %s", raw_state['Id'])
+            run_states.append(RunState(self, raw_state))
+
+        return run_states
+
+    def get_active_state(self) -> Optional[str]:
+        """Get the name of the active run state from the ZoneMinder API."""
+        for state in self.get_run_states():
+            if state.active:
+                return state.name
+        return None
+
+    def set_active_state(self, state_name):
+        """
+        Set the ZoneMinder run state to the given state name, via ZM API.
+        Note that this is a long-running API call; ZoneMinder changes the state
+        of each camera in turn, and this GET does not receive a response until
+        all cameras have been updated. Even on a reasonably powerful machine,
+        this call can take ten (10) or more seconds **per camera**. This method
+        sets a timeout of 120, which should be adequate for most users.
+        """
+        _LOGGER.info('Setting ZoneMinder run state to state %s', state_name)
+        return self._zm_request('GET',
+                                'api/states/change/{}.json'.format(state_name),
+                                timeout=120)
 
     def get_zms_url(self) -> str:
         """Get the url to the current ZMS instance."""
