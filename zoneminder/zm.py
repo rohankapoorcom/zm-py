@@ -102,11 +102,6 @@ class ZoneMinder:
         monitors = []
         for i in raw_monitors['monitors']:
             raw_monitor = i['Monitor']
-
-            if raw_monitor['Function'] == 'None':
-                _LOGGER.info("Skipping camera %s", raw_monitor['Id'])
-                continue
-
             _LOGGER.info("Initializing camera %s", raw_monitor['Id'])
             monitors.append(
                 Monitor(self, raw_monitor))
