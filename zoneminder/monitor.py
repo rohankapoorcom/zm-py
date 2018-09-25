@@ -124,7 +124,12 @@ class Monitor:
             ))
             return None
 
-        return int(status_response.get('status')) == STATE_ALARM
+        status = status_response.get('status')
+        # ZoneMinder API returns an empty string to indicate that this monitor
+        # cannot record right now
+        if status == '':
+            return False
+        return int(status) == STATE_ALARM
 
     def get_events(self, time_period, include_archived=False) -> Optional[int]:
         """Get the number of events that have occurred on this Monitor.
