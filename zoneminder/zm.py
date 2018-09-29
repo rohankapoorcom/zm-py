@@ -23,7 +23,8 @@ class ZoneMinder:
                  server_path=DEFAULT_SERVER_PATH,
                  zms_path=DEFAULT_ZMS_PATH, verify_ssl=True) -> None:
         """Create a ZoneMinder API Client."""
-        self._server_url = urljoin(server_host, server_path)
+        self._server_url = ZoneMinder._build_server_url(server_host,
+                                                        server_path)
         self._username = username
         self._password = password
         self._zms_path = zms_path
@@ -40,7 +41,7 @@ class ZoneMinder:
         if self._password:
             login_post['password'] = self._password
 
-        req = requests.post(urljoin(self._server_url, '/index.php'),
+        req = requests.post(urljoin(self._server_url, 'index.php'),
                             data=login_post, verify=self._verify_ssl)
         self._cookies = req.cookies
 
@@ -123,3 +124,11 @@ class ZoneMinder:
             return url
 
         return url + '&pass={:s}'.format(self._password)
+
+    @staticmethod
+    def _build_server_url(server_host, server_path) -> str:
+        """Build the server url making sure it ends in a trailing slash."""
+        server_url = urljoin(server_host, server_path)
+        if server_url[-1] == '/':
+            return server_url
+        return '{}/'.format(server_url)
