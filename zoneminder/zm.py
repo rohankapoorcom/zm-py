@@ -25,9 +25,9 @@ class ZoneMinder:
         """Create a ZoneMinder API Client."""
         self._server_url = ZoneMinder._build_server_url(server_host,
                                                         server_path)
+        self._zms_url = ZoneMinder._build_zms_url(server_host, zms_path)
         self._username = username
         self._password = password
-        self._zms_path = zms_path
         self._verify_ssl = verify_ssl
         self._cookies = None
 
@@ -111,7 +111,7 @@ class ZoneMinder:
 
     def get_zms_url(self) -> str:
         """Get the url to the current ZMS instance."""
-        return urljoin(self._server_url, self._zms_path)
+        return self._zms_url
 
     def get_url_with_auth(self, url) -> str:
         """Add the auth credentials to a url (if needed)."""
@@ -124,6 +124,11 @@ class ZoneMinder:
             return url
 
         return url + '&pass={:s}'.format(self._password)
+
+    @staticmethod
+    def _build_zms_url(server_host, zms_path) -> str:
+        """Build the ZMS url to the current ZMS instance."""
+        return urljoin(server_host, zms_path)
 
     @staticmethod
     def _build_server_url(server_host, server_path) -> str:
