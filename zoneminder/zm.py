@@ -135,6 +135,7 @@ class ZoneMinder:
     def set_active_state(self, state_name):
         """
         Set the ZoneMinder run state to the given state name, via ZM API.
+
         Note that this is a long-running API call; ZoneMinder changes the state
         of each camera in turn, and this GET does not receive a response until
         all cameras have been updated. Even on a reasonably powerful machine,

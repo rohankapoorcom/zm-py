@@ -1,3 +1,5 @@
+"""Classes that allow interacting with ZoneMinder RunStates."""
+
 
 class RunState:
     """Represents a Run State from ZoneMinder."""
@@ -12,6 +14,7 @@ class RunState:
     @property
     def id(self) -> int:
         """Get the ZoneMinder id number of this RunState."""
+        # pylint: disable=invalid-name
         return self._state_id
 
     @property
@@ -21,7 +24,7 @@ class RunState:
 
     @property
     def active(self) -> bool:
-        """Indicates if this RunState is currently active."""
+        """Indicate if this RunState is currently active."""
         states = self._client.get_state(self._state_url)['states']
         for state in states:
             state = state['State']
