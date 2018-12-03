@@ -72,27 +72,31 @@ class ZoneMinder:
     def _zm_request(self, method, api_url, data=None,
                     timeout=DEFAULT_TIMEOUT) -> dict:
         """Perform a request to the ZoneMinder API."""
-        # Since the API uses sessions that expire, sometimes we need to re-auth
-        # if the call fails.
-        for _ in range(ZoneMinder.LOGIN_RETRIES):
-            req = requests.request(
-                method, urljoin(self._server_url, api_url), data=data,
-                cookies=self._cookies, timeout=timeout,
-                verify=self._verify_ssl)
-
-            if not req.ok:
-                self.login()
-            else:
-                break
-
-        else:
-            _LOGGER.error("Unable to get API response from ZoneMinder")
-
         try:
-            return req.json()
-        except ValueError:
-            _LOGGER.exception('JSON decode exception caught while attempting '
-                              'to decode "%s"', req.text)
+            # Since the API uses sessions that expire, sometimes we need to re-auth
+            # if the call fails.
+            for _ in range(ZoneMinder.LOGIN_RETRIES):
+                req = requests.request(
+                    method, urljoin(self._server_url, api_url), data=data,
+                    cookies=self._cookies, timeout=timeout,
+                    verify=self._verify_ssl)
+
+                if not req.ok:
+                    self.login()
+                else:
+                    break
+
+            else:
+                _LOGGER.error('Unable to get API response from ZoneMinder')
+
+            try:
+                return req.json()
+            except ValueError:
+                _LOGGER.exception('JSON decode exception caught while attempting '
+                                  'to decode "%s"', req.text)
+                return {}
+        except requests.exceptions.ConnectionError:
+            _LOGGER.exception('Unable to connect to ZoneMinder')
             return {}
 
     def get_monitors(self) -> List[Monitor]:
@@ -162,6 +166,18 @@ class ZoneMinder:
             return url
 
         return url + '&pass={:s}'.format(self._password)
+
+    @property
+    def is_available(self) -> bool:
+        """Indicate if this ZoneMinder service is currently available."""
+        status_response = self.get_state(
+            'api/host/daemonCheck.json'
+        )
+
+        if not status_response:
+            return False
+
+        return 1 == status_response.get('result')
 
     @staticmethod
     def _build_zms_url(server_host, zms_path) -> str:
