@@ -177,7 +177,7 @@ class ZoneMinder:
         if not status_response:
             return False
 
-        return 1 == status_response.get('result')
+        return status_response.get('result') == 1
 
     @staticmethod
     def _build_zms_url(server_host, zms_path) -> str:
