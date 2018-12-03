@@ -73,8 +73,8 @@ class ZoneMinder:
                     timeout=DEFAULT_TIMEOUT) -> dict:
         """Perform a request to the ZoneMinder API."""
         try:
-            # Since the API uses sessions that expire, sometimes we need to re-auth
-            # if the call fails.
+            # Since the API uses sessions that expire, sometimes we need to
+            # re-auth if the call fails.
             for _ in range(ZoneMinder.LOGIN_RETRIES):
                 req = requests.request(
                     method, urljoin(self._server_url, api_url), data=data,
@@ -92,8 +92,8 @@ class ZoneMinder:
             try:
                 return req.json()
             except ValueError:
-                _LOGGER.exception('JSON decode exception caught while attempting '
-                                  'to decode "%s"', req.text)
+                _LOGGER.exception('JSON decode exception caught while'
+                                  'attempting to decode "%s"', req.text)
                 return {}
         except requests.exceptions.ConnectionError:
             _LOGGER.exception('Unable to connect to ZoneMinder')
