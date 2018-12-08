@@ -131,6 +131,23 @@ class Monitor:
             return False
         return int(status) == STATE_ALARM
 
+    @property
+    def is_available(self) -> bool:
+        """Indicate if this Monitor is currently available."""
+        status_response = self._client.get_state(
+            'api/monitors/daemonStatus/id:{}/daemon:zmc.json'.format(
+                self._monitor_id
+            )
+        )
+
+        if not status_response:
+            _LOGGER.warning('Could not get availability for monitor {}'.format(
+                self._monitor_id
+            ))
+            return False
+
+        return status_response.get('status', False)
+
     def get_events(self, time_period, include_archived=False) -> Optional[int]:
         """Get the number of events that have occurred on this Monitor.
 
