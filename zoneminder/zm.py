@@ -179,6 +179,11 @@ class ZoneMinder:
 
         return status_response.get('result') == 1
 
+    @property
+    def verify_ssl(self) -> bool:
+        """Indicate whether urls with http(s) should verify the certificate."""
+        return self._verify_ssl
+
     @staticmethod
     def _build_zms_url(server_host, zms_path) -> str:
         """Build the ZMS url to the current ZMS instance."""
