@@ -172,7 +172,7 @@ class Monitor:
         )
 
         try:
-            return event['results'][str(self._monitor_id)]
+            return event['results'].get(str(self._monitor_id), 0)
         except (TypeError, KeyError):
             return None
 
