@@ -58,9 +58,11 @@ class TimePeriod(Enum):
 class Monitor:
     """Represents a Monitor from ZoneMinder."""
 
-    def __init__(self, client, raw_monitor):
+    def __init__(self, client, raw_result):
         """Create a new Monitor."""
         self._client = client
+        self._raw_result = raw_result
+        raw_monitor = raw_result['Monitor']
         self._monitor_id = int(raw_monitor['Id'])
         self._monitor_url = 'api/monitors/{}.json'.format(self._monitor_id)
         self._name = raw_monitor['Name']
@@ -81,11 +83,17 @@ class Monitor:
         """Get the name of this Monitor."""
         return self._name
 
+    def update_monitor(self):
+        """Update the monitor and monitor status from the ZM server."""
+        result = self._client.get_state(self._monitor_url)
+        self._raw_result = result['monitor']
+
     @property
     def function(self) -> MonitorState:
         """Get the MonitorState of this Monitor."""
-        return MonitorState(self._client.get_state(
-            self._monitor_url)['monitor']['Monitor']['Function'])
+        self.update_monitor()
+
+        return MonitorState(self._raw_result['Monitor']['Function'])
 
     @function.setter
     def function(self, new_function):
@@ -146,7 +154,11 @@ class Monitor:
             ))
             return False
 
-        return status_response.get('status', False)
+        # Monitor_Status was only added in ZM 1.32.3
+        monitor_status = self._raw_result.get('Monitor_Status', None)
+        capture_fps = monitor_status and monitor_status['CaptureFPS']
+
+        return status_response.get('status', False) and capture_fps != "0.00"
 
     def get_events(self, time_period, include_archived=False) -> Optional[int]:
         """Get the number of events that have occurred on this Monitor.
