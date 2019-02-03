@@ -107,10 +107,10 @@ class ZoneMinder:
             return []
 
         monitors = []
-        for i in raw_monitors['monitors']:
-            raw_monitor = i['Monitor']
-            _LOGGER.info("Initializing camera %s", raw_monitor['Id'])
-            monitors.append(Monitor(self, raw_monitor))
+        for raw_result in raw_monitors['monitors']:
+            _LOGGER.debug("Initializing camera %s",
+                          raw_result['Monitor']['Id'])
+            monitors.append(Monitor(self, raw_result))
 
         return monitors
 
