@@ -5,7 +5,7 @@ long_description = open('README.md').read()
 
 setup(
     name='zm-py',
-    version='0.3.1',
+    version='0.3.2',
     license='Apache Software License',
     url='https://github.com/rohankapoorcom/zm-py',
     author='Rohan Kapoor',
