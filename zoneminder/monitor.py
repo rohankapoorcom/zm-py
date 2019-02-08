@@ -184,8 +184,11 @@ class Monitor:
         )
 
         try:
-            return event['results'].get(str(self._monitor_id), 0)
-        except (TypeError, KeyError):
+            events_by_monitor = event['results']
+            if isinstance(events_by_monitor, list):
+                return 0
+            return events_by_monitor.get(str(self._monitor_id), 0)
+        except (TypeError, KeyError, AttributeError):
             return None
 
     def _build_image_url(self, monitor, mode) -> str:
