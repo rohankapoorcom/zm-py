@@ -31,11 +31,31 @@ class ZoneMinder:
         self._password = password
         self._verify_ssl = verify_ssl
         self._cookies = None
+        self._auth_token = None
 
     def login(self):
         """Login to the ZoneMinder API."""
         _LOGGER.debug("Attempting to login to ZoneMinder")
 
+        login_post = {}
+        if self._username:
+            login_post['user'] = self._username
+        if self._password:
+            login_post['pass'] = self._password
+
+        req = requests.post(urljoin(self._server_url, 'api/host/login.json'),
+                            data=login_post, verify=self._verify_ssl)
+        if req.ok:
+            try:
+                self._auth_token = req.json()['access_token']
+                return True
+            except KeyError:
+                # Try legacy auth below
+                pass
+
+        return self._legacy_auth()
+
+    def _legacy_auth(self):
         login_post = {'view': 'console', 'action': 'login'}
         if self._username:
             login_post['username'] = self._username
@@ -72,12 +92,17 @@ class ZoneMinder:
     def _zm_request(self, method, api_url, data=None,
                     timeout=DEFAULT_TIMEOUT) -> dict:
         """Perform a request to the ZoneMinder API."""
+        token_url_suffix = ""
+        if self._auth_token:
+            token_url_suffix = "?token=" + self._auth_token
         try:
             # Since the API uses sessions that expire, sometimes we need to
             # re-auth if the call fails.
             for _ in range(ZoneMinder.LOGIN_RETRIES):
                 req = requests.request(
-                    method, urljoin(self._server_url, api_url), data=data,
+                    method,
+                    urljoin(self._server_url, api_url) + token_url_suffix,
+                    data=data,
                     cookies=self._cookies, timeout=timeout,
                     verify=self._verify_ssl)
 
