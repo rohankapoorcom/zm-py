@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "zm-py"
+version = "0.1.0"
+description = ""
+authors = ["Wallace Reis <wallace.mreis@gmail.com>"]
+license = "Apache-2.0"
+
+[tool.poetry.dependencies]
+python = "^3.5"
+requests = ">=2.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.4.2"
+pylint = "^2.5.2"
+pydocstyle = "^5.0.2"
+mypy = "^0.770"
+flake8 = "^3.8.1"
+flake8-docstrings = "^1.5.0"
+colorlog = "^4.1.0"
+requests = "^2.23.0"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"

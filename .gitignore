@@ -115,3 +115,4 @@ dmypy.json
 .idea/
 bin/
 lib64
+.vscode/settings.json

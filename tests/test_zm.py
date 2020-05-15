@@ -2,7 +2,6 @@
 
 import unittest
 
-from zm import ZoneMinder
 from zoneminder import zm
 
 
@@ -47,7 +46,8 @@ class TestZoneMinder(unittest.TestCase):
 
     def test_get_zms_url_no_trailing_slash(self):
         """Verifies that zms_url is correct with no trailing slashes."""
-        client = ZoneMinder(
+        
+        client = zm.ZoneMinder(
             "http://zoneminder.com",
             None,
             None,
@@ -61,7 +61,7 @@ class TestZoneMinder(unittest.TestCase):
 
     def test_get_zms_url_with_leading_slash_zms_path(self):
         """Verifies that zms_url is correct with leading slash in zms_path."""
-        client = ZoneMinder(
+        client = zm.ZoneMinder(
             "http://zoneminder.com",
             None,
             None,
