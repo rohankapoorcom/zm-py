@@ -5,10 +5,34 @@ from enum import Enum
 from typing import Optional
 from urllib.parse import urlencode
 
+from requests import post
+
+from .exceptions import ControlTypeError, MonitorControlTypeError
+
 _LOGGER = logging.getLogger(__name__)
 
 # From ZoneMinder's web/includes/config.php.in
 STATE_ALARM = 2
+
+
+class ControlType(Enum):
+    """Represents the possibles movements types of the Monitor."""
+
+    RIGHT = "moveConRight"
+    LEFT = "moveConLeft"
+    UP = "moveConUp"
+    DOWN = "moveConDown"
+    UP_LEFT = "moveConUpLeft"
+    UP_RIGHT = "moveConUpRight"
+    DOWN_LEFT = "moveConDownLeft"
+    DOWN_RIGHT = "moveConDownRight"
+
+    @classmethod
+    def from_move(cls, move) -> Enum:
+        for m, mm in ControlType.__members__.items():
+            if m == move.upper().replace("-", "_"):
+                return mm
+        raise ControlTypeError()
 
 
 class MonitorState(Enum):
@@ -66,7 +90,7 @@ class Monitor:
         self._monitor_id = int(raw_monitor["Id"])
         self._monitor_url = "api/monitors/{}.json".format(self._monitor_id)
         self._name = raw_monitor["Name"]
-        self._controllable = bool(raw_monitor["Controllable"])
+        self._controllable = bool(int(raw_monitor["Controllable"]))
         self._mjpeg_image_url = self._build_image_url(raw_monitor, "jpeg")
         self._still_image_url = self._build_image_url(raw_monitor, "single")
 
@@ -190,3 +214,22 @@ class Monitor:
         url = "{zms_url}?{query}".format(zms_url=self._client.get_zms_url(), query=query)
         _LOGGER.debug("Monitor %s %s URL (without auth): %s", monitor["Id"], mode, url)
         return self._client.get_url_with_auth(url)
+
+    def ptz_control_command(self, direction):
+        """Move camera"""
+        if not self.controllable:
+            raise MonitorControlTypeError()
+
+        ptz_url = f"{self._client._server_url}index.php"
+
+        params = {
+            "view": "request",
+            "request": "control",
+            "id": self.id,
+            "control": ControlType.from_move(direction).value,
+            "xge": 43,
+            "token": self._client._auth_token,
+        }
+        
+        req = post(url=ptz_url, params=params)
+        return True if req.ok else False
