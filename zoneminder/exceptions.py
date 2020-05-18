@@ -6,6 +6,8 @@ This module contains the set of zoneminder exceptions.
 
 
 class ZoneminderError(Exception):
+    """General Zoneminder error occurred."""
+
     def __init__(self, value=None):
         self.value = value
 
@@ -15,7 +17,6 @@ class ZoneminderError(Exception):
             msg = msg.rstrip(".")
             msg += ": " + repr(self.value) + "."
         return msg
-    """General Amcrest error occurred."""
 
 
 class CommError(ZoneminderError):
@@ -29,8 +30,10 @@ class LoginError(ZoneminderError):
 class ControlTypeError(ZoneminderError):
     """Unexpected move direction."""
 
+
 class MonitorControlTypeError(ZoneminderError):
     """Unexpected command to monitor."""
+
 
 class PtzError(ZoneminderError):
     """A control error occurred."""

@@ -1,7 +1,7 @@
 """Classes that allow interacting with specific ZoneMinder monitors."""
 
-import logging
 from enum import Enum
+import logging
 from typing import Optional
 from urllib.parse import urlencode
 
@@ -29,9 +29,13 @@ class ControlType(Enum):
 
     @classmethod
     def from_move(cls, move) -> Enum:
-        for m, mm in ControlType.__members__.items():
-            if m == move.upper().replace("-", "_"):
-                return mm
+        """Get the corresponding direction from the move.
+
+        Example values: 'right', 'UP-RIGHT', 'down', 'down-left', or 'up_left'.
+        """
+        for move_key, move_obj in ControlType.__members__.items():
+            if move_key == move.upper().replace("-", "_"):
+                return move_obj
         raise ControlTypeError()
 
 
@@ -95,10 +99,18 @@ class Monitor:
         self._still_image_url = self._build_image_url(raw_monitor, "single")
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(id={self.id}, name={self.name}, controllable={self.controllable})"
+        """Representation of a Monitor."""
+        return (
+            f"{self.__class__.__name__}(id={self.id}, name={self.name}, "
+            f"controllable={self.controllable})"
+        )
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__}(id={self.id}, name={self.name}, controllable={self.controllable})"
+        """Representation of a Monitor."""
+        return (
+            f"{self.__class__.__name__}(id={self.id}, name={self.name}, "
+            f"controllable={self.controllable})"
+        )
 
     @property
     def id(self) -> int:
@@ -215,8 +227,8 @@ class Monitor:
         _LOGGER.debug("Monitor %s %s URL (without auth): %s", monitor["Id"], mode, url)
         return self._client.get_url_with_auth(url)
 
-    def ptz_control_command(self, direction):
-        """Move camera"""
+    def ptz_control_command(self, direction) -> bool:
+        """Move camera."""
         if not self.controllable:
             raise MonitorControlTypeError()
 
@@ -230,6 +242,6 @@ class Monitor:
             "xge": 43,
             "token": self._client._auth_token,
         }
-        
+
         req = post(url=ptz_url, params=params)
         return True if req.ok else False
