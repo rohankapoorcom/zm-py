@@ -97,20 +97,15 @@ class Monitor:
         self._controllable = bool(int(raw_monitor["Controllable"]))
         self._mjpeg_image_url = self._build_image_url(raw_monitor, "jpeg")
         self._still_image_url = self._build_image_url(raw_monitor, "single")
+        self._fmt = "{}(id={}, name={}, controllable={})"
 
     def __repr__(self) -> str:
         """Representation of a Monitor."""
-        return (
-            f"{self.__class__.__name__}(id={self.id}, name={self.name}, "
-            f"controllable={self.controllable})"
-        )
+        return self._fmt.format(self.__class__.__name__, self.id, self.name)
 
     def __str__(self) -> str:
         """Representation of a Monitor."""
-        return (
-            f"{self.__class__.__name__}(id={self.id}, name={self.name}, "
-            f"controllable={self.controllable})"
-        )
+        return self.__repr__()
 
     @property
     def id(self) -> int:
@@ -249,12 +244,12 @@ class Monitor:
         )
         return self._client.get_url_with_auth(url)
 
-    def ptz_control_command(self, direction) -> bool:
+    def ptz_control_command(self, direction, token, base_url) -> bool:
         """Move camera."""
         if not self.controllable:
             raise MonitorControlTypeError()
 
-        ptz_url = f"{self._client._server_url}index.php"
+        ptz_url = "{}index.php".format(base_url)
 
         params = {
             "view": "request",
@@ -262,8 +257,8 @@ class Monitor:
             "id": self.id,
             "control": ControlType.from_move(direction).value,
             "xge": 43,
-            "token": self._client._auth_token,
+            "token": token,
         }
 
         req = post(url=ptz_url, params=params)
-        return True if req.ok else False
+        return bool(req.ok)

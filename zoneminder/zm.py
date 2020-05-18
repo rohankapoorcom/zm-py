@@ -22,13 +22,13 @@ class ZoneMinder:
     MONITOR_URL = "api/monitors.json"
 
     def __init__(
-        self,
-        server_host,
-        username,
-        password,
-        server_path=DEFAULT_SERVER_PATH,
-        zms_path=DEFAULT_ZMS_PATH,
-        verify_ssl=True,
+            self,
+            server_host,
+            username,
+            password,
+            server_path=DEFAULT_SERVER_PATH,
+            zms_path=DEFAULT_ZMS_PATH,
+            verify_ssl=True,
     ) -> None:
         """Create a ZoneMinder API Client."""
         self._server_url = ZoneMinder._build_server_url(
@@ -105,7 +105,11 @@ class ZoneMinder:
         return self._zm_request("post", api_url, post_data)
 
     def _zm_request(
-        self, method, api_url, data=None, timeout=DEFAULT_TIMEOUT
+            self,
+            method,
+            api_url,
+            data=None,
+            timeout=DEFAULT_TIMEOUT
     ) -> dict:
         """Perform a request to the ZoneMinder API."""
         token_url_suffix = ""
@@ -242,11 +246,13 @@ class ZoneMinder:
             return server_url
         return "{}/".format(server_url)
 
-    @staticmethod
-    def move_monitor(monitor: Monitor, direction: str):
+    def move_monitor(self, monitor: Monitor, direction: str):
         """Call Zoneminder to move."""
         try:
-            result = monitor.ptz_control_command(direction)
+            result = monitor.ptz_control_command(
+                direction,
+                self._auth_token,
+                self._server_url)
             if result:
                 _LOGGER.info("Success to move camera to %s", direction)
             else:

@@ -46,7 +46,6 @@ class TestZoneMinder(unittest.TestCase):
 
     def test_get_zms_url_no_trailing_slash(self):
         """Verifies that zms_url is correct with no trailing slashes."""
-
         client = zm.ZoneMinder(
             "http://zoneminder.com",
             None,
