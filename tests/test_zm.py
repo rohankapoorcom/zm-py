@@ -48,13 +48,25 @@ class TestZoneMinder(unittest.TestCase):
         """Verifies that zms_url is correct with no trailing slashes."""
 
         client = zm.ZoneMinder(
-            "http://zoneminder.com", None, None, server_path="zm", zms_path="cgi-bin/npm-zms"
+            "http://zoneminder.com",
+            None,
+            None,
+            server_path="zm",
+            zms_path="cgi-bin/npm-zms",
         )
-        self.assertEqual("http://zoneminder.com/cgi-bin/npm-zms", client.get_zms_url())
+        self.assertEqual(
+            "http://zoneminder.com/cgi-bin/npm-zms", client.get_zms_url()
+        )
 
     def test_get_zms_url_with_leading_slash_zms_path(self):
         """Verifies that zms_url is correct with leading slash in zms_path."""
         client = zm.ZoneMinder(
-            "http://zoneminder.com", None, None, server_path="zm", zms_path="/cgi-bin/npm-zms"
+            "http://zoneminder.com",
+            None,
+            None,
+            server_path="zm",
+            zms_path="/cgi-bin/npm-zms",
         )
-        self.assertEqual("http://zoneminder.com/cgi-bin/npm-zms", client.get_zms_url())
+        self.assertEqual(
+            "http://zoneminder.com/cgi-bin/npm-zms", client.get_zms_url()
+        )

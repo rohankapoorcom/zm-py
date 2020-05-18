@@ -17,7 +17,11 @@ def test_control_type_from_move(source, want):
 
 
 @mark.parametrize(
-    "source,want", [("UP-DOWN", raises(ControlTypeError)), ("rigth", raises(ControlTypeError)),],
+    "source,want",
+    [
+        ("UP-DOWN", raises(ControlTypeError)),
+        ("rigth", raises(ControlTypeError)),
+    ],
 )
 def test_control_type_from_move_wrong_move(source, want):
     with want:
