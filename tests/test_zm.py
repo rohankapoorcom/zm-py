@@ -72,6 +72,7 @@ class TestZoneMinder(unittest.TestCase):
             'http://zoneminder.com/cgi-bin/npm-zms',
             client.get_zms_url()
         )
+
     def test_get_url_with_auth_username_special(self):
         """Verifies handing of username with special characters is encoded"""
         client = ZoneMinder(
