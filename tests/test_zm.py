@@ -72,3 +72,30 @@ class TestZoneMinder(unittest.TestCase):
             'http://zoneminder.com/cgi-bin/npm-zms',
             client.get_zms_url()
         )
+    def test_get_url_with_auth_username_special(self):
+        """Verifies handing of username with special characters is encoded"""
+        client = ZoneMinder(
+            None,
+            "@dmin",
+            None,
+            server_path="zm",
+            zms_path="/cgi-bin/npm-zms"
+        )
+        self.assertEqual(
+            "/cgi-bin/npm-zms&user=%40dmin",
+            client.get_url_with_auth(client.get_zms_url())
+        )
+
+    def test_get_url_with_auth_password_special(self):
+        """Verifies handing of password with special characters is encoded"""
+        client = ZoneMinder(
+            None,
+            "@dmin",
+            "p@ssword",
+            server_path="zm",
+            zms_path="/cgi-bin/npm-zms"
+        )
+        self.assertEqual(
+            "/cgi-bin/npm-zms&user=%40dmin&pass=p%40ssword",
+            client.get_url_with_auth(client.get_zms_url())
+        )
