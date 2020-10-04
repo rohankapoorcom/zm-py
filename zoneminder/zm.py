@@ -2,6 +2,7 @@
 import logging
 from typing import List, Optional
 from urllib.parse import urljoin
+from urllib.parse import quote
 
 import requests
 
@@ -211,12 +212,11 @@ class ZoneMinder:
         if not self._username:
             return url
 
-        url += "&user={:s}".format(self._username)
+        url += '&user={:s}'.format(quote(self._username))
 
         if not self._password:
             return url
-
-        return url + "&pass={:s}".format(self._password)
+        return url + '&pass={:s}'.format(quote(self._password))
 
     @property
     def is_available(self) -> bool:
