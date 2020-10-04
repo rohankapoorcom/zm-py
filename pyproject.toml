@@ -1,0 +1,53 @@
+[tool.poetry]
+name = "zm-py"
+version = "0.1.0"
+description = ""
+authors = ["Rohan Kapoor <rohan@rohankapoor.com>"]
+license = "Apache-2.0"
+
+readme = "README.md"
+
+homepage = "https://github.com/rohankapoorcom/zm-py"
+repository = "https://github.com/rohankapoorcom/zm-py"
+
+packages = [
+    {include = "zoneminder"},
+    {include = "tests", format = "sdist"}
+]
+
+[tool.poetry.dependencies]
+python = "^3.6"
+requests = ">=2.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^4.6"
+pylint = "^2.5.2"
+pydocstyle = "^5.0.2"
+mypy = "^0.770"
+flake8 = "^3.8.1"
+flake8-docstrings = "^1.5.0"
+colorlog = "^4.1.0"
+requests = "^2.23.0"
+tox = "^3.15.0"
+autopep8 = "^1.5.2"
+
+[tool.black]
+line-length = 100
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | build
+  | dist
+  | tests/toml-test
+)/
+'''
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
