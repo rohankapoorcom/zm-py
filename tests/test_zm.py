@@ -72,7 +72,7 @@ class TestZoneMinder(unittest.TestCase):
 
     def test_get_url_with_auth_username_special(self):
         """Verifies handing of username with special characters is encoded."""
-        client = ZoneMinder(
+        client = zm.ZoneMinder(
             None,
             "@dmin",
             None,
@@ -86,7 +86,7 @@ class TestZoneMinder(unittest.TestCase):
 
     def test_get_url_with_auth_password_special(self):
         """Verifies handing of password with special characters is encoded."""
-        client = ZoneMinder(
+        client = zm.ZoneMinder(
             None,
             "@dmin",
             "p@ssword",
