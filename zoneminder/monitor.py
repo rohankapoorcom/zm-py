@@ -158,7 +158,7 @@ class Monitor:
         )
 
         if not status_response:
-            _LOGGER.warning("Could not get status for monitor {}".format(self._monitor_id))
+            _LOGGER.warning("Could not get status for monitor %s.", self._monitor_id)
             return None
 
         status = status_response.get("status")
@@ -176,7 +176,7 @@ class Monitor:
         )
 
         if not status_response:
-            _LOGGER.warning("Could not get availability for monitor {}".format(self._monitor_id))
+            _LOGGER.warning("Could not get availability for monitor %s.", self._monitor_id)
             return False
 
         # Monitor_Status was only added in ZM 1.32.3
