@@ -133,9 +133,7 @@ class Monitor:
     @function.setter
     def function(self, new_function):
         """Set the MonitorState of this Monitor."""
-        self._client.change_state(
-            self._monitor_url, {"Monitor[Function]": new_function.value}
-        )
+        self._client.change_state(self._monitor_url, {"Monitor[Function]": new_function.value})
 
     @property
     def controllable(self) -> bool:
@@ -156,15 +154,11 @@ class Monitor:
     def is_recording(self) -> Optional[bool]:
         """Indicate if this Monitor is currently recording."""
         status_response = self._client.get_state(
-            "api/monitors/alarm/id:{}/command:status.json".format(
-                self._monitor_id
-            )
+            "api/monitors/alarm/id:{}/command:status.json".format(self._monitor_id)
         )
 
         if not status_response:
-            _LOGGER.warning(
-                "Could not get status for monitor {}".format(self._monitor_id)
-            )
+            _LOGGER.warning("Could not get status for monitor {}".format(self._monitor_id))
             return None
 
         status = status_response.get("status")
@@ -178,17 +172,11 @@ class Monitor:
     def is_available(self) -> bool:
         """Indicate if this Monitor is currently available."""
         status_response = self._client.get_state(
-            "api/monitors/daemonStatus/id:{}/daemon:zmc.json".format(
-                self._monitor_id
-            )
+            "api/monitors/daemonStatus/id:{}/daemon:zmc.json".format(self._monitor_id)
         )
 
         if not status_response:
-            _LOGGER.warning(
-                "Could not get availability for monitor {}".format(
-                    self._monitor_id
-                )
-            )
+            _LOGGER.warning("Could not get availability for monitor {}".format(self._monitor_id))
             return False
 
         # Monitor_Status was only added in ZM 1.32.3
@@ -214,9 +202,7 @@ class Monitor:
             archived_filter = ""
 
         event = self._client.get_state(
-            "api/events/consoleEvents/{}{}.json".format(
-                date_filter, archived_filter
-            )
+            "api/events/consoleEvents/{}{}.json".format(date_filter, archived_filter)
         )
 
         try:
@@ -236,12 +222,8 @@ class Monitor:
                 "monitor": monitor["Id"],
             }
         )
-        url = "{zms_url}?{query}".format(
-            zms_url=self._client.get_zms_url(), query=query
-        )
-        _LOGGER.debug(
-            "Monitor %s %s URL (without auth): %s", monitor["Id"], mode, url
-        )
+        url = "{zms_url}?{query}".format(zms_url=self._client.get_zms_url(), query=query)
+        _LOGGER.debug("Monitor %s %s URL (without auth): %s", monitor["Id"], mode, url)
         return self._client.get_url_with_auth(url)
 
     def ptz_control_command(self, direction, token, base_url) -> bool:

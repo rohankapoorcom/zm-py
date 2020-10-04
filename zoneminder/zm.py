@@ -23,18 +23,16 @@ class ZoneMinder:
     MONITOR_URL = "api/monitors.json"
 
     def __init__(
-            self,
-            server_host,
-            username,
-            password,
-            server_path=DEFAULT_SERVER_PATH,
-            zms_path=DEFAULT_ZMS_PATH,
-            verify_ssl=True,
+        self,
+        server_host,
+        username,
+        password,
+        server_path=DEFAULT_SERVER_PATH,
+        zms_path=DEFAULT_ZMS_PATH,
+        verify_ssl=True,
     ) -> None:
         """Create a ZoneMinder API Client."""
-        self._server_url = ZoneMinder._build_server_url(
-            server_host, server_path
-        )
+        self._server_url = ZoneMinder._build_server_url(server_host, server_path)
         self._zms_url = ZoneMinder._build_zms_url(server_host, zms_path)
         self._username = username
         self._password = password
@@ -105,13 +103,7 @@ class ZoneMinder:
         """Perform a POST request on the specific ZoneMinder API Url."""
         return self._zm_request("post", api_url, post_data)
 
-    def _zm_request(
-            self,
-            method,
-            api_url,
-            data=None,
-            timeout=DEFAULT_TIMEOUT
-    ) -> dict:
+    def _zm_request(self, method, api_url, data=None, timeout=DEFAULT_TIMEOUT) -> dict:
         """Perform a request to the ZoneMinder API."""
         token_url_suffix = ""
         if self._auth_token:
@@ -141,8 +133,7 @@ class ZoneMinder:
                 return req.json()
             except ValueError:
                 _LOGGER.exception(
-                    "JSON decode exception caught while"
-                    'attempting to decode "%s"',
+                    "JSON decode exception caught while" 'attempting to decode "%s"',
                     req.text,
                 )
                 return {}
@@ -159,9 +150,7 @@ class ZoneMinder:
 
         monitors = []
         for raw_result in raw_monitors["monitors"]:
-            _LOGGER.debug(
-                "Initializing camera %s", raw_result["Monitor"]["Id"]
-            )
+            _LOGGER.debug("Initializing camera %s", raw_result["Monitor"]["Id"])
             monitors.append(Monitor(self, raw_result))
 
         return monitors
@@ -199,9 +188,7 @@ class ZoneMinder:
         sets a timeout of 120, which should be adequate for most users.
         """
         _LOGGER.info("Setting ZoneMinder run state to state %s", state_name)
-        return self._zm_request(
-            "GET", "api/states/change/{}.json".format(state_name), timeout=120
-        )
+        return self._zm_request("GET", "api/states/change/{}.json".format(state_name), timeout=120)
 
     def get_zms_url(self) -> str:
         """Get the url to the current ZMS instance."""
@@ -212,11 +199,11 @@ class ZoneMinder:
         if not self._username:
             return url
 
-        url += '&user={:s}'.format(quote(self._username))
+        url += "&user={:s}".format(quote(self._username))
 
         if not self._password:
             return url
-        return url + '&pass={:s}'.format(quote(self._password))
+        return url + "&pass={:s}".format(quote(self._password))
 
     @property
     def is_available(self) -> bool:
@@ -249,10 +236,7 @@ class ZoneMinder:
     def move_monitor(self, monitor: Monitor, direction: str):
         """Call Zoneminder to move."""
         try:
-            result = monitor.ptz_control_command(
-                direction,
-                self._auth_token,
-                self._server_url)
+            result = monitor.ptz_control_command(direction, self._auth_token, self._server_url)
             if result:
                 _LOGGER.info("Success to move camera to %s", direction)
             else:

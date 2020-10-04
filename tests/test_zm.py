@@ -53,9 +53,7 @@ class TestZoneMinder(unittest.TestCase):
             server_path="zm",
             zms_path="cgi-bin/npm-zms",
         )
-        self.assertEqual(
-            "http://zoneminder.com/cgi-bin/npm-zms", client.get_zms_url()
-        )
+        self.assertEqual("http://zoneminder.com/cgi-bin/npm-zms", client.get_zms_url())
 
     def test_get_zms_url_with_leading_slash_zms_path(self):
         """Verifies that zms_url is correct with leading slash in zms_path."""
@@ -66,34 +64,21 @@ class TestZoneMinder(unittest.TestCase):
             server_path="zm",
             zms_path="/cgi-bin/npm-zms",
         )
-        self.assertEqual(
-            "http://zoneminder.com/cgi-bin/npm-zms", client.get_zms_url()
-        )
+        self.assertEqual("http://zoneminder.com/cgi-bin/npm-zms", client.get_zms_url())
 
     def test_get_url_with_auth_username_special(self):
         """Verifies handing of username with special characters is encoded."""
-        client = zm.ZoneMinder(
-            None,
-            "@dmin",
-            None,
-            server_path="zm",
-            zms_path="/cgi-bin/npm-zms"
-        )
+        client = zm.ZoneMinder(None, "@dmin", None, server_path="zm", zms_path="/cgi-bin/npm-zms")
         self.assertEqual(
-            "/cgi-bin/npm-zms&user=%40dmin",
-            client.get_url_with_auth(client.get_zms_url())
+            "/cgi-bin/npm-zms&user=%40dmin", client.get_url_with_auth(client.get_zms_url())
         )
 
     def test_get_url_with_auth_password_special(self):
         """Verifies handing of password with special characters is encoded."""
         client = zm.ZoneMinder(
-            None,
-            "@dmin",
-            "p@ssword",
-            server_path="zm",
-            zms_path="/cgi-bin/npm-zms"
+            None, "@dmin", "p@ssword", server_path="zm", zms_path="/cgi-bin/npm-zms"
         )
         self.assertEqual(
             "/cgi-bin/npm-zms&user=%40dmin&pass=p%40ssword",
-            client.get_url_with_auth(client.get_zms_url())
+            client.get_url_with_auth(client.get_zms_url()),
         )
