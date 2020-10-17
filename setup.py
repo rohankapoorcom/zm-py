@@ -13,7 +13,7 @@ setup(
     description='A loose python wrapper around the ZoneMinder REST API.',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    packages=find_packages(),
+    packages=find_packages(exclude=("tests",)),
     zip_safe=False,
     include_package_data=True,
     platforms='any',
