@@ -1,30 +1,33 @@
-sudo: false
-
-matrix:
+dist: focal
+os: linux
+jobs:
   fast_finish: true
   include:
     - python: "3.6"
       env: TOXENV=lint
-      dist: xenial
+      dist: focal
     - python: "3.6"
       env: TOXENV=pylint
-      dist: xenial
+      dist: focal
     - python: "3.6"
       env: TOXENV=typing
-      dist: xenial
+      dist: focal
     - python: "3.6"
       env: TOXENV=py36
-      dist: xenial
+      dist: focal
     - python: "3.7"
       env: TOXENV=py37
-      dist: xenial
-    - python: "3.8-dev"
+      dist: focal
+    - python: "3.8"
       env: TOXENV=py38
-      dist: xenial
+      dist: focal
+    - python: "3.9-dev"
+      env: TOXENV=py39
+      dist: focal
   allow_failures:
-    - python: "3.8-dev"
-      env: TOXENV=py38
-      dist: xenial
+    - python: "3.9-dev"
+      env: TOXENV=py39
+      dist: focal
 
 cache:
   directories:
