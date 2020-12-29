@@ -150,12 +150,16 @@ class Monitor:
         """Get the still jpeg image url of this Monitor."""
         return self._still_image_url
 
+    def __alarm_control_command(self, command) -> dict:
+        """Send alarm command to monitor."""
+        return self._client.get_state("api/monitors/alarm/id:{mid}/command:{command}.json".format(
+            mid=self._monitor_id, command=command)
+        )
+
     @property
     def is_recording(self) -> Optional[bool]:
         """Indicate if this Monitor is currently recording."""
-        status_response = self._client.get_state(
-            "api/monitors/alarm/id:{}/command:status.json".format(self._monitor_id)
-        )
+        status_response = self.__alarm_control_command("status")
 
         if not status_response:
             _LOGGER.warning("Could not get status for monitor %s.", self._monitor_id)
@@ -167,6 +171,13 @@ class Monitor:
         if status == "":
             return False
         return int(status) == STATE_ALARM
+
+    def set_force_alarm_state(self, state):
+        """Set the monitor force alarm state."""
+        status_response = self.__alarm_control_command("on" if state is True else "off")
+
+        if not status_response:
+            _LOGGER.warning("Could not get status for monitor %s.", self._monitor_id)
 
     @property
     def is_available(self) -> bool:

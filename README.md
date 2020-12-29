@@ -33,17 +33,23 @@ from zoneminder.zm import ZoneMinder
 SERVER_HOST = "{{host}}:{{port}}"
 USER = "{{user}}"
 PASS = "{{pass}}"
-SERVER_PATH = "{{path}}"
+SERVER_PATH = "{{path}}"         # example: /zm/
+SERVER_ZMS_PATH = "{{zms_path}}" # example: /zm/cgi-bin/nph-zms
 
 zm_client = ZoneMinder(
-    server_host=SERVER_HOST, server_path=SERVER_PATH, username=USER, password=PASS, verify_ssl=False
+    server_host=SERVER_HOST,
+    server_path=SERVER_PATH,
+    zms_path=SERVER_ZMS_PATH,
+    username=USER,
+    password=PASS,
+    verify_ssl=False
 )
 
-#Zoneminder authentication
+# Zoneminder authentication
 zm_client.login()
 
 
-#Get all monitors
+# Get all monitors
 monitors = zm_client.get_monitors()
 
 for monitor in monitors:
@@ -52,7 +58,7 @@ for monitor in monitors:
 >>> Monitor(id='monitor_id', name='monitor_name', controllable='is_controllable')
 
 
-#Move camera down
+# Move camera down
 controllable_monitors = [m for m in monitors if m.controllable]
 
 for monitor in controllable_monitors:
