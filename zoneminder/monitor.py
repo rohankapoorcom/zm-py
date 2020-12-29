@@ -151,7 +151,7 @@ class Monitor:
         return self._still_image_url
 
     def __alarm_control_command(self, command) -> dict:
-        """Send alarm command to monitor"""
+        """Send alarm command to monitor."""
         return self._client.get_state("api/monitors/alarm/id:{mid}/command:{command}.json".format(
             mid=self._monitor_id, command=command)
         )
