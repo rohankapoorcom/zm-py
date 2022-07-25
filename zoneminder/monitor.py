@@ -12,7 +12,7 @@ from .exceptions import ControlTypeError, MonitorControlTypeError
 _LOGGER = logging.getLogger(__name__)
 
 # From ZoneMinder's web/includes/config.php.in
-STATE_ALARM = 2
+STATE_ALARM = 3
 
 
 class ControlType(Enum):
