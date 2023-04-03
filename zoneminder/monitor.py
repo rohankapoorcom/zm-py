@@ -6,6 +6,7 @@ from typing import Optional
 from urllib.parse import urlencode
 
 from requests import post
+import json
 
 from .exceptions import ControlTypeError, MonitorControlTypeError
 
@@ -88,6 +89,7 @@ class Monitor:
 
     def __init__(self, client, raw_result):
         """Create a new Monitor."""
+        #_LOGGER.error("INIT for monitor %s.", json.dumps(raw_result, sort_keys=False, indent=4))
         self._client = client
         self._raw_result = raw_result
         raw_monitor = raw_result["Monitor"]
@@ -164,7 +166,7 @@ class Monitor:
         status = status_response.get("status")
         # ZoneMinder API returns an empty string to indicate that this monitor
         # cannot record right now
-        if status == "":
+        if status == "" or status == "Ok":
             return False
         return int(status) == STATE_ALARM
 
@@ -174,6 +176,7 @@ class Monitor:
         status_response = self._client.get_state(
             "api/monitors/daemonStatus/id:{}/daemon:zmc.json".format(self._monitor_id)
         )
+        #_LOGGER.error("AVAILABILITY for monitor %s .", json.dumps(status_response, sort_keys=False, indent=4))
 
         if not status_response:
             _LOGGER.warning("Could not get availability for monitor %s.", self._monitor_id)
@@ -182,8 +185,12 @@ class Monitor:
         # Monitor_Status was only added in ZM 1.32.3
         monitor_status = self._raw_result.get("Monitor_Status", None)
         capture_fps = monitor_status and monitor_status["CaptureFPS"]
+        monitor_state = monitor_status and monitor_status["Status"]
+        #_LOGGER.error("STATUS for monitor %s .", json.dumps(monitor_status, sort_keys=False, indent=4))
+        #_LOGGER.error("FPS for monitor %s .", json.dumps(capture_fps, sort_keys=False, indent=4))
 
-        return status_response.get("status", False) and capture_fps != "0.00"
+        #return status_response.get("status", False) and capture_fps != "0.00"
+        return monitor_state == "Connected" and capture_fps != "0.00"
 
     def get_events(self, time_period, include_archived=False) -> Optional[int]:
         """Get the number of events that have occurred on this Monitor.
@@ -222,7 +229,17 @@ class Monitor:
                 "monitor": monitor["Id"],
             }
         )
-        url = "{zms_url}?{query}".format(zms_url=self._client.get_zms_url(), query=query)
+
+        _LOGGER.debug("_build_image_url for monitor %s.", json.dumps(monitor, sort_keys=False, indent=4))
+        
+        if int(monitor["ServerId"]) > 0:
+            server = self._client._servers_by_id[int(monitor["ServerId"])]
+            server_hostname = "{protocol}://{hostname}{pathtozms}".format(hostname=server.hostname, pathtozms=server.pathtozms, protocol=server.protocol)
+        else:
+            server_hostname = self._client.get_zms_url()
+        _LOGGER.debug("_build_image_url server_hostname %s", server_hostname)
+
+        url = "{zms_url}?{query}".format(zms_url=server_hostname, query=query)
         _LOGGER.debug("Monitor %s %s URL (without auth): %s", monitor["Id"], mode, url)
         return self._client.get_url_with_auth(url)
 
