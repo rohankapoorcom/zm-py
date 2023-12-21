@@ -164,9 +164,10 @@ class Monitor:
         status = status_response.get("status")
         # ZoneMinder API returns an empty string to indicate that this monitor
         # cannot record right now
-        if status == "":
+        try:
+            return int(status) == STATE_ALARM
+        except ValueError:
             return False
-        return int(status) == STATE_ALARM
 
     @property
     def is_available(self) -> bool:
