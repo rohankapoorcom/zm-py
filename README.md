@@ -2,15 +2,22 @@
 
 [![image](https://badge.fury.io/py/zm-py.svg)](https://badge.fury.io/py/zm-py/)
 
-[![image](https://travis-ci.org/rohankapoorcom/zm-py.svg?branch=master)](https://travis-ci.org/rohankapoorcom/zm-py)
+[![Python package](https://github.com/rohankapoorcom/zm-py/actions/workflows/python-qa.yml/badge.svg)](https://github.com/rohankapoorcom/zm-py/actions/workflows/python-qa.yml)
 
 [![image](https://img.shields.io/pypi/pyversions/zm-py.svg)](https://pypi.python.org/pypi/zm-py)
 
 [![license](https://img.shields.io/github/license/rohankapoorcom/zm-py.svg?style=flat-square)](https://github.com/rohankapoorcom/zm-py/blob/master/LICENSE.md)
 
-A loose python wrapper around the [ZoneMinder](https://www.zoneminder.org) API. As time goes on additional functionality will be added to this API client.
+A loose python wrapper around the [ZoneMinder](https://www.zoneminder.org) API.
+As time goes on additional functionality will be added to this API client.
 
-zm-py is based on code that was originally part of [Home Assistant](https://www.home-assistant.io). Historical sources and authorship information is available as part of the Home Assistant project:
+## Acknowledgments
+
+Not to be confused with ZoneMinder's Pythonic ZoneMinder wrapper [pyzm](https://github.com/ZoneMinder/pyzm),
+this zm-py project (with a hyphen) is tailored for the [Home Assistant ZoneMinder Integration](https://www.home-assistant.io/integrations/zoneminder/)
+
+zm-py is based on code that was originally part of [Home Assistant](https://www.home-assistant.io).
+Historical sources and authorship information is available as part of the Home Assistant project:
 
 - [ZoneMinder Platform](https://github.com/home-assistant/home-assistant/commits/dev/homeassistant/components/zoneminder.py)
 - [ZoneMinder Camera](https://github.com/home-assistant/home-assistant/commits/dev/homeassistant/components/camera/zoneminder.py)
@@ -22,7 +29,7 @@ zm-py is based on code that was originally part of [Home Assistant](https://www.
 ### PyPI
 
 ```bash
-$ pip install zm-py
+pip install zm-py
 ```
 
 ## Usage
