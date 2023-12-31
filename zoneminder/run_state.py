@@ -30,7 +30,8 @@ class RunState:
             state = state["State"]
             if int(state["Id"]) == self._state_id:
                 # yes, the ZM API uses the *string* "1" for this...
-                return state["IsActive"] == "1"
+                # Since ZM 1.36 this is now an *int*, provides support for legacy versions
+                return int(state["IsActive"]) == 1
         return False
 
     def activate(self):
