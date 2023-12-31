@@ -74,7 +74,7 @@ class TimePeriod(Enum):
         for time_period in TimePeriod:
             if time_period.period == value:
                 return time_period
-        raise ValueError("{} is not a valid TimePeriod".format(value))
+        raise ValueError(f"{value} is not a valid TimePeriod")
 
     ALL = ("all", "Events")
     HOUR = ("hour", "Events Last Hour")
@@ -92,7 +92,7 @@ class Monitor:
         self._raw_result = raw_result
         raw_monitor = raw_result["Monitor"]
         self._monitor_id = int(raw_monitor["Id"])
-        self._monitor_url = "api/monitors/{}.json".format(self._monitor_id)
+        self._monitor_url = f"api/monitors/{self._monitor_id}.json"
         self._name = raw_monitor["Name"]
         self._controllable = bool(int(raw_monitor["Controllable"]))
         self._mjpeg_image_url = self._build_image_url(raw_monitor, "jpeg")
@@ -154,7 +154,7 @@ class Monitor:
     def is_recording(self) -> Optional[bool]:
         """Indicate if this Monitor is currently recording."""
         status_response = self._client.get_state(
-            "api/monitors/alarm/id:{}/command:status.json".format(self._monitor_id)
+            f"api/monitors/alarm/id:{self._monitor_id}/command:status.json"
         )
 
         if not status_response:
@@ -172,7 +172,7 @@ class Monitor:
     def is_available(self) -> bool:
         """Indicate if this Monitor is currently available."""
         status_response = self._client.get_state(
-            "api/monitors/daemonStatus/id:{}/daemon:zmc.json".format(self._monitor_id)
+            f"api/monitors/daemonStatus/id:{self._monitor_id}/daemon:zmc.json"
         )
 
         if not status_response:
@@ -191,7 +191,7 @@ class Monitor:
         Specifically only gets events that have occurred within the TimePeriod
         provided.
         """
-        date_filter = "1%20{}".format(time_period.period)
+        date_filter = f"1%20{time_period.period}"
         if time_period == TimePeriod.ALL:
             # The consoleEvents API uses DATE_SUB, so give it
             # something large
@@ -202,7 +202,7 @@ class Monitor:
             archived_filter = ""
 
         event = self._client.get_state(
-            "api/events/consoleEvents/{}{}.json".format(date_filter, archived_filter)
+            f"api/events/consoleEvents/{date_filter}{archived_filter}.json"
         )
 
         try:
@@ -222,7 +222,7 @@ class Monitor:
                 "monitor": monitor["Id"],
             }
         )
-        url = "{zms_url}?{query}".format(zms_url=self._client.get_zms_url(), query=query)
+        url = f"{self._client.get_zms_url()}?{query}"
         _LOGGER.debug("Monitor %s %s URL (without auth): %s", monitor["Id"], mode, url)
         return self._client.get_url_with_auth(url)
 
@@ -231,7 +231,7 @@ class Monitor:
         if not self.controllable:
             raise MonitorControlTypeError()
 
-        ptz_url = "{}index.php".format(base_url)
+        ptz_url = f"{base_url}index.php"
 
         params = {
             "view": "request",
@@ -242,5 +242,5 @@ class Monitor:
             "token": token,
         }
 
-        req = post(url=ptz_url, params=params)
+        req = post(url=ptz_url, params=params, timeout=10)
         return bool(req.ok)
