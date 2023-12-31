@@ -13,7 +13,7 @@ As time goes on additional functionality will be added to this API client.
 
 ## Acknowledgments
 
-Not to be confused with ZoneMinder's Pythonic ZoneMinder wrapper [pyzm](https://github.com/ZoneMinder/pyzm),
+Not to be confused with ZoneMinder's Pythonic wrapper [pyzm](https://github.com/ZoneMinder/pyzm),
 this zm-py project (with a hyphen) is tailored for the [Home Assistant ZoneMinder Integration](https://www.home-assistant.io/integrations/zoneminder/)
 
 zm-py is based on code that was originally part of [Home Assistant](https://www.home-assistant.io).
