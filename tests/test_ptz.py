@@ -2,8 +2,9 @@
 
 
 from pytest import mark, raises
-from zoneminder.monitor import ControlType
+
 from zoneminder.exceptions import ControlTypeError
+from zoneminder.monitor import ControlType
 
 
 @mark.parametrize(

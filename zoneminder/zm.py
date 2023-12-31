@@ -1,14 +1,13 @@
 """An API Client to interact with ZoneMinder."""
 import logging
 from typing import List, Optional
-from urllib.parse import urljoin
-from urllib.parse import quote
+from urllib.parse import quote, urljoin
 
 import requests
 
+from zoneminder.exceptions import ControlTypeError, MonitorControlTypeError
 from zoneminder.monitor import Monitor
 from zoneminder.run_state import RunState
-from zoneminder.exceptions import ControlTypeError, MonitorControlTypeError
 
 _LOGGER = logging.getLogger(__name__)
 
