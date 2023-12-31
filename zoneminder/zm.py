@@ -54,6 +54,7 @@ class ZoneMinder:
             urljoin(self._server_url, "api/host/login.json"),
             data=login_post,
             verify=self._verify_ssl,
+            timeout=ZoneMinder.DEFAULT_TIMEOUT,
         )
         if req.ok:
             try:
@@ -76,6 +77,7 @@ class ZoneMinder:
             urljoin(self._server_url, "index.php"),
             data=login_post,
             verify=self._verify_ssl,
+            timeout=ZoneMinder.DEFAULT_TIMEOUT,
         )
         self._cookies = req.cookies
 
@@ -133,7 +135,7 @@ class ZoneMinder:
                 return req.json()
             except ValueError:
                 _LOGGER.exception(
-                    "JSON decode exception caught while" 'attempting to decode "%s"',
+                    'JSON decode exception caught while attempting to decode "%s"',
                     req.text,
                 )
                 return {}
@@ -188,7 +190,7 @@ class ZoneMinder:
         sets a timeout of 120, which should be adequate for most users.
         """
         _LOGGER.info("Setting ZoneMinder run state to state %s", state_name)
-        return self._zm_request("GET", "api/states/change/{}.json".format(state_name), timeout=120)
+        return self._zm_request("GET", f"api/states/change/{state_name}.json", timeout=120)
 
     def get_zms_url(self) -> str:
         """Get the url to the current ZMS instance."""
@@ -199,11 +201,11 @@ class ZoneMinder:
         if not self._username:
             return url
 
-        url += "&user={:s}".format(quote(self._username))
+        url += f"&user={quote(self._username)}"
 
         if not self._password:
             return url
-        return url + "&pass={:s}".format(quote(self._password))
+        return url + f"&pass={quote(self._password)}"
 
     @property
     def is_available(self) -> bool:
@@ -231,7 +233,7 @@ class ZoneMinder:
         server_url = urljoin(server_host, server_path)
         if server_url[-1] == "/":
             return server_url
-        return "{}/".format(server_url)
+        return f"{server_url}/"
 
     def move_monitor(self, monitor: Monitor, direction: str):
         """Call Zoneminder to move."""
