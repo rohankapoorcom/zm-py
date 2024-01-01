@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "zm-py"
 version = "0.5.3"
-description = ""
+description = "A loose python wrapper around the ZoneMinder REST API."
 authors = ["Rohan Kapoor <rohan@rohankapoor.com>"]
 maintainers = ["Nic Boet <nic@boet.cc>"]
 license = "Apache-2.0"
@@ -10,6 +10,16 @@ readme = "README.md"
 
 homepage = "https://github.com/rohankapoorcom/zm-py"
 repository = "https://github.com/rohankapoorcom/zm-py"
+
+classifiers= [
+    'Intended Audience :: Developers',
+    'License :: OSI Approved :: Apache Software License',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+    'Topic :: Home Automation'
+]
 
 packages = [
     {include = "zoneminder"},
