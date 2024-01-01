@@ -2,7 +2,8 @@
 name = "zm-py"
 version = "0.5.3"
 description = ""
-authors = ["Rohan Kapoor <rohan@rohankapoor.com>","Nic Boet <nic@boet.cc>"]
+authors = ["Rohan Kapoor <rohan@rohankapoor.com>"]
+maintainers = ["Nic Boet <nic@boet.cc>"]
 license = "Apache-2.0"
 
 readme = "README.md"
