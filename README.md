@@ -43,14 +43,18 @@ PASS = "{{pass}}"
 SERVER_PATH = "{{path}}"
 
 zm_client = ZoneMinder(
-    server_host=SERVER_HOST, server_path=SERVER_PATH, username=USER, password=PASS, verify_ssl=False
+    server_host=SERVER_HOST,
+    server_path=SERVER_PATH,
+    username=USER,
+    password=PASS,
+    verify_ssl=False
 )
 
-#Zoneminder authentication
+# Zoneminder authentication
 zm_client.login()
 
 
-#Get all monitors
+# Get all monitors
 monitors = zm_client.get_monitors()
 
 for monitor in monitors:
@@ -59,7 +63,7 @@ for monitor in monitors:
 >>> Monitor(id='monitor_id', name='monitor_name', controllable='is_controllable')
 
 
-#Move camera down
+# Move camera down
 controllable_monitors = [m for m in monitors if m.controllable]
 
 for monitor in controllable_monitors:
