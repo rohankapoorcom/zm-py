@@ -1,6 +1,6 @@
 # Zm-py
 
-[![image](https://badge.fury.io/py/zm-py.svg)](https://badge.fury.io/py/zm-py/)
+[![image](https://badge.fury.io/py/zm-py.png)](https://badge.fury.io/py/zm-py)
 
 [![Python package](https://github.com/rohankapoorcom/zm-py/actions/workflows/python-qa.yml/badge.svg)](https://github.com/rohankapoorcom/zm-py/actions/workflows/python-qa.yml)
 
