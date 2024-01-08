@@ -149,6 +149,10 @@ class ZoneMinder:
             _LOGGER.warning("Could not fetch monitors from ZoneMinder")
             return []
 
+        if "monitors" not in raw_monitors:
+            _LOGGER.warning("Could not parse list of monitors from ZoneMinder")
+            return []
+
         monitors = []
         for raw_result in raw_monitors["monitors"]:
             _LOGGER.debug("Initializing camera %s", raw_result["Monitor"]["Id"])
