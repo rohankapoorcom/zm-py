@@ -1,4 +1,5 @@
 """An API Client to interact with ZoneMinder."""
+
 import logging
 from typing import List, Optional
 from urllib.parse import quote, urljoin
