@@ -101,7 +101,7 @@ class Monitor:
 
     def __repr__(self) -> str:
         """Representation of a Monitor."""
-        return self._fmt.format(self.__class__.__name__, self.id, self.name)
+        return self._fmt.format(self.__class__.__name__, self.id, self.name, self.controllable)
 
     def __str__(self) -> str:
         """Representation of a Monitor."""
