@@ -1,6 +1,7 @@
 """Classes that allow interacting with specific ZoneMinder monitors."""
 
 from enum import Enum
+import json
 import logging
 from typing import Optional
 from urllib.parse import urlencode
@@ -183,8 +184,9 @@ class Monitor:
         # Monitor_Status was only added in ZM 1.32.3
         monitor_status = self._raw_result.get("Monitor_Status", None)
         capture_fps = monitor_status and monitor_status["CaptureFPS"]
+        monitor_state = monitor_status and monitor_status["Status"]
 
-        return status_response.get("status", False) and capture_fps != "0.00"
+        return monitor_state == "Connected" and capture_fps != "0.00"
 
     def get_events(self, time_period, include_archived=False) -> Optional[int]:
         """Get the number of events that have occurred on this Monitor.
@@ -223,7 +225,17 @@ class Monitor:
                 "monitor": monitor["Id"],
             }
         )
-        url = f"{self._client.get_zms_url()}?{query}"
+        _LOGGER.debug(
+            "_build_image_url for monitor %s.", json.dumps(monitor, sort_keys=False, indent=4)
+        )
+        if int(monitor["ServerId"]) > 0:
+            server = self._client.servers_by_id[int(monitor["ServerId"])]
+            server_hostname = f"{server.protocol}://{server.hostname}{server.pathtozms}"
+        else:
+            server_hostname = self._client.get_zms_url()
+        _LOGGER.debug("_build_image_url server_hostname %s", server_hostname)
+
+        url = f"{server_hostname}?{query}"
         _LOGGER.debug("Monitor %s %s URL (without auth): %s", monitor["Id"], mode, url)
         return self._client.get_url_with_auth(url)
 

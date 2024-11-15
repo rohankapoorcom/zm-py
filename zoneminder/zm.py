@@ -1,5 +1,6 @@
 """An API Client to interact with ZoneMinder."""
 
+import json
 import logging
 from typing import List, Optional
 from urllib.parse import quote, urljoin
@@ -9,6 +10,7 @@ import requests
 from zoneminder.exceptions import ControlTypeError, MonitorControlTypeError
 from zoneminder.monitor import Monitor
 from zoneminder.run_state import RunState
+from zoneminder.server import Server
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,6 +23,7 @@ class ZoneMinder:
     DEFAULT_TIMEOUT = 10
     LOGIN_RETRIES = 2
     MONITOR_URL = "api/monitors.json"
+    SERVER_URL = "api/servers.json"
 
     def __init__(
         self,
@@ -39,6 +42,8 @@ class ZoneMinder:
         self._verify_ssl = verify_ssl
         self._cookies = None
         self._auth_token = None
+        self.servers_by_id = {}
+        self._servers = None
 
     def login(self):
         """Login to the ZoneMinder API."""
@@ -59,6 +64,7 @@ class ZoneMinder:
         if req.ok:
             try:
                 self._auth_token = req.json()["access_token"]
+                _LOGGER.debug("Using access_token for login to ZoneMinder")
                 return True
             except KeyError:
                 # Try legacy auth below
@@ -145,6 +151,9 @@ class ZoneMinder:
 
     def get_monitors(self) -> List[Monitor]:
         """Get a list of Monitors from the ZoneMinder API."""
+        if not self._servers:
+            self._servers = self.get_servers()
+
         raw_monitors = self._zm_request("get", ZoneMinder.MONITOR_URL)
         if not raw_monitors:
             _LOGGER.warning("Could not fetch monitors from ZoneMinder")
@@ -160,6 +169,34 @@ class ZoneMinder:
             monitors.append(Monitor(self, raw_result))
 
         return monitors
+
+    def get_servers(self) -> List[Server]:
+        """Get a list of Servers from the ZoneMinder API."""
+        raw_servers = self._zm_request("get", ZoneMinder.SERVER_URL)
+        _LOGGER.debug("INIT for servers %s.", json.dumps(raw_servers, sort_keys=False, indent=4))
+        if not raw_servers:
+            _LOGGER.warning("Could not fetch servers from ZoneMinder")
+            return []
+
+        servers = []
+        for raw_result in raw_servers["servers"]:
+            _LOGGER.debug(
+                "Initializing server %s - %s",
+                raw_result["Server"]["Id"],
+                raw_result["Server"]["Hostname"],
+            )
+            servers.append(Server(self, raw_result))
+
+        if not servers:
+            _LOGGER.warning("Could not fetch servers from ZoneMinder host")
+            return
+
+        for server in servers:
+            _LOGGER.debug("Initializing server %s", server.id)
+            self.servers_by_id[int(server.id)] = server
+        _LOGGER.debug("servers_by_id %s.", {self.servers_by_id.__str__})
+
+        return servers
 
     def get_run_states(self) -> List[RunState]:
         """Get a list of RunStates from the ZoneMinder API."""
@@ -202,14 +239,18 @@ class ZoneMinder:
 
     def get_url_with_auth(self, url) -> str:
         """Add the auth credentials to a url (if needed)."""
-        if not self._username:
+        if not self._username and not self._auth_token:
             return url
 
-        url += f"&user={quote(self._username)}"
+        if self._auth_token:
+            url += f"&token={quote(self._auth_token)}"
+        else:
+            url += f"&user={quote(self._username)}"
+            if not self._password:
+                return url
+            url += f"&pass={quote(self._password)}"
 
-        if not self._password:
-            return url
-        return url + f"&pass={quote(self._password)}"
+        return url
 
     @property
     def is_available(self) -> bool:
@@ -229,6 +270,7 @@ class ZoneMinder:
     @staticmethod
     def _build_zms_url(server_host, zms_path) -> str:
         """Build the ZMS url to the current ZMS instance."""
+        _LOGGER.debug("Building ZMS URL: %s : %s", server_host, zms_path)
         return urljoin(server_host, zms_path)
 
     @staticmethod
