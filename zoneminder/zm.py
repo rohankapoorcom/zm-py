@@ -188,7 +188,7 @@ class ZoneMinder:
             servers.append(Server(self, raw_result))
 
         if not servers:
-            _LOGGER.warning("Could not fetch servers from ZoneMinder host")
+            _LOGGER.warning("No additional servers detected on ZoneMinder host")
             return
 
         for server in servers:
