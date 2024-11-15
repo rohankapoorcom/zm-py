@@ -43,6 +43,7 @@ requests = "^2.31.0"
 tox = "^4.11.4"
 autopep8 = "^2.0.4"
 platformdirs = "<4.0.0"
+black = "^24.10.0"
 
 [tool.black]
 line-length = 100
