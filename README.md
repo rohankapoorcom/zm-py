@@ -8,8 +8,10 @@
 
 [![license](https://img.shields.io/github/license/rohankapoorcom/zm-py.svg?style=flat-square)](https://github.com/rohankapoorcom/zm-py/blob/master/LICENSE.md)
 
-A loose python wrapper around the [ZoneMinder](https://www.zoneminder.org) API.
-As time goes on additional functionality will be added to this API client.
+A loose python wrapper around the [ZoneMinder](https://www.zoneminder.org) API for Home Assistant
+
+Time constraints have limited the development cycles to maintenance mode.
+Pull Requests, passing the pipeline QA checks, will continue to be accepted.
 
 ## Acknowledgments
 
