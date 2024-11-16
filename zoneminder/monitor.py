@@ -122,14 +122,18 @@ class Monitor:
     def update_monitor(self):
         """Update the monitor and monitor status from the ZM server."""
         result = self._client.get_state(self._monitor_url)
-        self._raw_result = result["monitor"]
+        try:
+            self._raw_result = result["monitor"]
+        except KeyError:
+            return False
 
     @property
     def function(self) -> MonitorState:
         """Get the MonitorState of this Monitor."""
-        self.update_monitor()
-
-        return MonitorState(self._raw_result["Monitor"]["Function"])
+        if self.update_monitor():
+            return MonitorState(self._raw_result["Monitor"]["Function"])
+        else:
+            return "None"
 
     @function.setter
     def function(self, new_function):
