@@ -132,7 +132,7 @@ class Monitor:
         """Get the MonitorState of this Monitor."""
         if self.update_monitor():
             return MonitorState(self._raw_result["Monitor"]["Function"])
-        return "None"
+        return "Error-MonitorState"
 
     @function.setter
     def function(self, new_function):
@@ -187,9 +187,8 @@ class Monitor:
         # Monitor_Status was only added in ZM 1.32.3
         monitor_status = self._raw_result.get("Monitor_Status", None)
         capture_fps = monitor_status and monitor_status["CaptureFPS"]
-        monitor_state = monitor_status and monitor_status["Status"]
 
-        return monitor_state == "Connected" and capture_fps != "0.00"
+        return status_response.get("status", False) and capture_fps != "0.00"
 
     def get_events(self, time_period, include_archived=False) -> Optional[int]:
         """Get the number of events that have occurred on this Monitor.

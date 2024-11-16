@@ -240,18 +240,14 @@ class ZoneMinder:
 
     def get_url_with_auth(self, url) -> str:
         """Add the auth credentials to a url (if needed)."""
-        if not self._username and not self._auth_token:
+        if not self._username:
             return url
 
-        if self._auth_token:
-            url += f"&token={quote(self._auth_token)}"
-        else:
-            url += f"&user={quote(self._username)}"
-            if not self._password:
-                return url
-            url += f"&pass={quote(self._password)}"
+        url += f"&user={quote(self._username)}"
 
-        return url
+        if not self._password:
+            return url
+        return url + f"&pass={quote(self._password)}"
 
     @property
     def is_available(self) -> bool:
