@@ -49,6 +49,7 @@ class ZoneMinder:
         """Login to the ZoneMinder API."""
         _LOGGER.debug("Attempting to login to ZoneMinder")
 
+        self._auth_token = None
         login_post = {}
         if self._username:
             login_post["user"] = self._username

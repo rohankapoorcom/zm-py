@@ -132,8 +132,7 @@ class Monitor:
         """Get the MonitorState of this Monitor."""
         if self.update_monitor():
             return MonitorState(self._raw_result["Monitor"]["Function"])
-        else:
-            return "None"
+        return "None"
 
     @function.setter
     def function(self, new_function):
