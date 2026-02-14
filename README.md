@@ -1,4 +1,4 @@
-# Zm-py
+# zm-py
 
 [![image](https://badge.fury.io/py/zm-py.png)](https://badge.fury.io/py/zm-py)
 
@@ -8,13 +8,17 @@
 
 [![license](https://img.shields.io/github/license/rohankapoorcom/zm-py.svg?style=flat-square)](https://github.com/rohankapoorcom/zm-py/blob/master/LICENSE.md)
 
-A loose python wrapper around the [ZoneMinder](https://www.zoneminder.org) API.
-As time goes on additional functionality will be added to this API client.
+A lightweight Python API client for [ZoneMinder](https://www.zoneminder.org), built specifically for the [Home Assistant ZoneMinder integration](https://www.home-assistant.io/integrations/zoneminder/).
 
-## Acknowledgments
+## Project Status
 
-Not to be confused with ZoneMinder's Pythonic wrapper [pyzm](https://github.com/ZoneMinder/pyzm),
-this zm-py project (with a hyphen) is tailored for the [Home Assistant ZoneMinder Integration](https://www.home-assistant.io/integrations/zoneminder/)
+**This project is in maintenance mode.** zm-py provides the limited set of ZoneMinder API interactions that Home Assistant needs (monitors, camera streaming, events, sensors, and switches). Bug fixes and compatibility updates are accepted; new feature development is not planned.
+
+## Not pyzm / pyzm2
+
+zm-py is **not** a general-purpose ZoneMinder Python library. For full-featured ZoneMinder API access, see [pyzm](https://github.com/ZoneMinder/pyzm) or its fork [pyzm2](https://github.com/pliablepixels/pyzm). zm-py covers only the subset of the ZoneMinder API required by Home Assistant and carries no heavy dependencies. Replacing zm-py with pyzm or pyzm2 would require significant refactoring of the HA integration due to dependency conflicts and functional differences.
+
+## Origins
 
 zm-py is based on code that was originally part of [Home Assistant](https://www.home-assistant.io).
 Historical sources and authorship information is available as part of the Home Assistant project:
