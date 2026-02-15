@@ -210,6 +210,31 @@ class TestGetActiveState:
 
 
 # ---------------------------------------------------------------------------
+# set_active_state
+# ---------------------------------------------------------------------------
+
+
+class TestSetActiveState:
+    @patch.object(ZoneMinder, "_zm_request", return_value={})
+    def test_url_encodes_state_name(self, mock_req):
+        """State names with special chars should be percent-encoded."""
+        c = _client()
+        c.set_active_state("Away Mode")
+        call_args = mock_req.call_args
+        api_url = call_args[0][1]
+        assert "Away%20Mode" in api_url
+        assert "Away Mode" not in api_url
+
+    @patch.object(ZoneMinder, "_zm_request", return_value={})
+    def test_plain_state_name(self, mock_req):
+        """Simple state names should pass through unchanged."""
+        c = _client()
+        c.set_active_state("Home")
+        api_url = mock_req.call_args[0][1]
+        assert "Home" in api_url
+
+
+# ---------------------------------------------------------------------------
 # move_monitor
 # ---------------------------------------------------------------------------
 

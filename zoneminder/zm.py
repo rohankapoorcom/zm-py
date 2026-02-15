@@ -305,7 +305,9 @@ class ZoneMinder:
         sets a timeout of 120, which should be adequate for most users.
         """
         _LOGGER.info("Setting ZoneMinder run state to state %s", state_name)
-        return self._zm_request("GET", f"api/states/change/{state_name}.json", timeout=120)
+        return self._zm_request(
+            "GET", f"api/states/change/{quote(state_name, safe='')}.json", timeout=120
+        )
 
     def get_zms_url(self) -> str:
         """Get the url to the current ZMS instance."""
