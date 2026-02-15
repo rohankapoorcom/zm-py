@@ -1,0 +1,224 @@
+"""Unit tests for ZoneMinder client logic beyond URL building.
+
+Tests response parsing, property behaviour, and move_monitor using
+a mock _zm_request -- no live server needed.
+
+URL building tests remain in test_zm.py (the original upstream tests).
+"""
+
+from __future__ import annotations
+
+from unittest.mock import patch
+
+import pytest
+
+from zoneminder.exceptions import ControlTypeError, MonitorControlTypeError
+from zoneminder.monitor import Monitor
+from zoneminder.run_state import RunState
+from zoneminder.zm import ZoneMinder
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _client(**kwargs) -> ZoneMinder:
+    """Build a ZoneMinder client with sensible defaults."""
+    return ZoneMinder(
+        server_host=kwargs.get("host", "http://zm.test"),
+        username=kwargs.get("username", "admin"),
+        password=kwargs.get("password", "secret"),
+        server_path=kwargs.get("server_path", "/zm/"),
+        zms_path=kwargs.get("zms_path", "/zm/cgi-bin/nph-zms"),
+        verify_ssl=kwargs.get("verify_ssl", False),
+    )
+
+
+def _monitor_raw(mid=1, name="Cam", controllable="0", function="Monitor"):
+    return {
+        "Monitor": {
+            "Id": str(mid),
+            "Name": name,
+            "Controllable": controllable,
+            "Function": function,
+            "StreamReplayBuffer": "0",
+        },
+        "Monitor_Status": {"CaptureFPS": "10.00"},
+    }
+
+
+# ---------------------------------------------------------------------------
+# verify_ssl property
+# ---------------------------------------------------------------------------
+
+class TestVerifySsl:
+    def test_default_is_true(self):
+        c = ZoneMinder("http://zm.test", None, None)
+        assert c.verify_ssl is True
+
+    def test_explicit_false(self):
+        c = _client(verify_ssl=False)
+        assert c.verify_ssl is False
+
+    def test_explicit_true(self):
+        c = _client(verify_ssl=True)
+        assert c.verify_ssl is True
+
+
+# ---------------------------------------------------------------------------
+# is_available
+# ---------------------------------------------------------------------------
+
+class TestIsAvailable:
+    def test_true_when_result_is_1(self):
+        c = _client()
+        with patch.object(c, "get_state", return_value={"result": 1}):
+            assert c.is_available is True
+
+    def test_false_when_result_is_0(self):
+        c = _client()
+        with patch.object(c, "get_state", return_value={"result": 0}):
+            assert c.is_available is False
+
+    def test_false_when_empty_response(self):
+        c = _client()
+        with patch.object(c, "get_state", return_value={}):
+            assert c.is_available is False
+
+    def test_false_when_result_is_string(self):
+        """zm-py compares == 1 (int), so string '1' returns False (BUG-002 territory)."""
+        c = _client()
+        with patch.object(c, "get_state", return_value={"result": "1"}):
+            assert c.is_available is False
+
+
+# ---------------------------------------------------------------------------
+# get_monitors
+# ---------------------------------------------------------------------------
+
+class TestGetMonitors:
+    def test_returns_list_of_monitors(self):
+        raw = {"monitors": [_monitor_raw(1, "Cam1"), _monitor_raw(2, "Cam2")]}
+        c = _client()
+        with patch.object(c, "_zm_request", return_value=raw):
+            monitors = c.get_monitors()
+        assert len(monitors) == 2
+        assert all(isinstance(m, Monitor) for m in monitors)
+        assert monitors[0].id == 1
+        assert monitors[1].name == "Cam2"
+
+    def test_empty_response_returns_empty_list(self):
+        c = _client()
+        with patch.object(c, "_zm_request", return_value={}):
+            assert c.get_monitors() == []
+
+    def test_no_monitors_key_returns_empty_list(self):
+        c = _client()
+        with patch.object(c, "_zm_request", return_value={"other": "data"}):
+            assert c.get_monitors() == []
+
+    def test_empty_monitors_list(self):
+        c = _client()
+        with patch.object(c, "_zm_request", return_value={"monitors": []}):
+            assert c.get_monitors() == []
+
+
+# ---------------------------------------------------------------------------
+# get_run_states
+# ---------------------------------------------------------------------------
+
+class TestGetRunStates:
+    def test_returns_list_of_run_states(self):
+        raw = {
+            "states": [
+                {"State": {"Id": "1", "Name": "Default", "IsActive": 1}},
+                {"State": {"Id": "2", "Name": "Away", "IsActive": 0}},
+            ]
+        }
+        c = _client()
+        with patch.object(c, "get_state", return_value=raw):
+            states = c.get_run_states()
+        assert len(states) == 2
+        assert all(isinstance(s, RunState) for s in states)
+        assert states[0].name == "Default"
+
+    def test_empty_response_returns_empty_list(self):
+        c = _client()
+        with patch.object(c, "get_state", return_value={}):
+            assert c.get_run_states() == []
+
+
+# ---------------------------------------------------------------------------
+# get_active_state
+# ---------------------------------------------------------------------------
+
+class TestGetActiveState:
+    def test_returns_active_state_name(self):
+        raw = {
+            "states": [
+                {"State": {"Id": "1", "Name": "Default", "IsActive": 0}},
+                {"State": {"Id": "2", "Name": "Away", "IsActive": 1}},
+            ]
+        }
+        c = _client()
+        with patch.object(c, "get_state", return_value=raw):
+            assert c.get_active_state() == "Away"
+
+    def test_returns_none_when_no_active(self):
+        raw = {
+            "states": [
+                {"State": {"Id": "1", "Name": "Default", "IsActive": 0}},
+            ]
+        }
+        c = _client()
+        with patch.object(c, "get_state", return_value=raw):
+            assert c.get_active_state() is None
+
+
+# ---------------------------------------------------------------------------
+# move_monitor
+# ---------------------------------------------------------------------------
+
+class TestMoveMonitor:
+    def _make_monitor(self, controllable=True):
+        raw = _monitor_raw(controllable="1" if controllable else "0")
+        return Monitor(_client(), raw)
+
+    @patch("zoneminder.monitor.post")
+    def test_delegates_to_ptz_control_command(self, mock_post):
+        mock_post.return_value.ok = True
+        c = _client()
+        c._auth_token = "test-token"
+        mon = self._make_monitor(controllable=True)
+        c.move_monitor(mon, "right")
+        mock_post.assert_called_once()
+
+    @pytest.mark.xfail(reason="BUG-001: move_monitor swallows ControlTypeError")
+    def test_raises_on_invalid_direction(self):
+        """move_monitor should propagate ControlTypeError to callers."""
+        c = _client()
+        c._auth_token = "tok"
+        mon = self._make_monitor(controllable=True)
+        with pytest.raises(ControlTypeError):
+            c.move_monitor(mon, "invalid-direction")
+
+    @pytest.mark.xfail(reason="BUG-001: move_monitor swallows MonitorControlTypeError")
+    def test_raises_on_non_controllable(self):
+        """move_monitor should propagate MonitorControlTypeError to callers."""
+        c = _client()
+        c._auth_token = "tok"
+        mon = self._make_monitor(controllable=False)
+        with pytest.raises(MonitorControlTypeError):
+            c.move_monitor(mon, "right")
+
+    @pytest.mark.xfail(reason="BUG-001: move_monitor has no return statement")
+    @patch("zoneminder.monitor.post")
+    def test_returns_bool_on_success(self, mock_post):
+        """move_monitor should return True on success."""
+        mock_post.return_value.ok = True
+        c = _client()
+        c._auth_token = "tok"
+        mon = self._make_monitor(controllable=True)
+        result = c.move_monitor(mon, "right")
+        assert result is True

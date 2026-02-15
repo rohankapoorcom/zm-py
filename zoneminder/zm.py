@@ -10,6 +10,7 @@ from zoneminder.exceptions import ControlTypeError, MonitorControlTypeError
 from zoneminder.monitor import Monitor
 from zoneminder.run_state import RunState
 
+
 _LOGGER = logging.getLogger(__name__)
 
 

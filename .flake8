@@ -8,6 +8,8 @@ max-line-length = 88
 # E203: Whitespace before ':'
 # D202 No blank lines allowed after function docstring
 # W504 line break after binary operator
+per-file-ignores =
+    tests/*:D100,D101,D102,D103,D104,D105,D107,D400,D401,D403
 ignore =
     E501,
     W503,

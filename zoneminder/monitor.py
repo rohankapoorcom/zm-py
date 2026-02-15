@@ -9,6 +9,7 @@ from requests import post
 
 from .exceptions import ControlTypeError, MonitorControlTypeError
 
+
 _LOGGER = logging.getLogger(__name__)
 
 # From ZoneMinder's web/includes/config.php.in
