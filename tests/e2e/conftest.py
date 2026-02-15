@@ -42,7 +42,6 @@ import requests
 
 from zoneminder.zm import ZoneMinder
 
-
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------

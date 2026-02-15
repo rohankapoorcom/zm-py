@@ -12,7 +12,6 @@ import pytest
 
 from zoneminder.zm import ZoneMinder
 
-
 pytestmark = pytest.mark.zm_e2e
 
 

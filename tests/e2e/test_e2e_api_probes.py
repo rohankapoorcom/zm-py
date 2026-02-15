@@ -33,7 +33,6 @@ from urllib.parse import urljoin
 import pytest
 import requests
 
-
 pytestmark = pytest.mark.zm_e2e
 
 logger = logging.getLogger(__name__)

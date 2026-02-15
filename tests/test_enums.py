@@ -7,7 +7,6 @@ import pytest
 from zoneminder.exceptions import ControlTypeError
 from zoneminder.monitor import ControlType, MonitorState, TimePeriod
 
-
 # ---------------------------------------------------------------------------
 # TimePeriod
 # ---------------------------------------------------------------------------

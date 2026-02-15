@@ -12,7 +12,6 @@ import pytest
 
 from zoneminder.exceptions import MonitorControlTypeError
 
-
 pytestmark = pytest.mark.zm_e2e
 
 

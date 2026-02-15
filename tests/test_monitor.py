@@ -13,7 +13,6 @@ import pytest
 from zoneminder.exceptions import ControlTypeError, MonitorControlTypeError
 from zoneminder.monitor import Monitor, MonitorState, TimePeriod
 
-
 # ---------------------------------------------------------------------------
 # Stub client
 # ---------------------------------------------------------------------------

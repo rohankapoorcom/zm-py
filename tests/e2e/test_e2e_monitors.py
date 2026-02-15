@@ -10,7 +10,6 @@ import pytest
 
 from zoneminder.monitor import Monitor, MonitorState, TimePeriod
 
-
 pytestmark = pytest.mark.zm_e2e
 
 

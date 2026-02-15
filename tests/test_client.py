@@ -18,7 +18,6 @@ from zoneminder.monitor import Monitor
 from zoneminder.run_state import RunState
 from zoneminder.zm import ZoneMinder
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

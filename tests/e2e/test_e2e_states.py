@@ -10,7 +10,6 @@ import pytest
 
 from zoneminder.run_state import RunState
 
-
 pytestmark = pytest.mark.zm_e2e
 
 

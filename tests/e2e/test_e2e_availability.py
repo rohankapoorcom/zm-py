@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import pytest
 
-
 pytestmark = pytest.mark.zm_e2e
 
 
