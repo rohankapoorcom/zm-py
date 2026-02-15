@@ -195,7 +195,6 @@ class TestMoveMonitor:
         c.move_monitor(mon, "right")
         mock_post.assert_called_once()
 
-    @pytest.mark.xfail(reason="BUG-001: move_monitor swallows ControlTypeError")
     def test_raises_on_invalid_direction(self):
         """move_monitor should propagate ControlTypeError to callers."""
         c = _client()
@@ -204,7 +203,6 @@ class TestMoveMonitor:
         with pytest.raises(ControlTypeError):
             c.move_monitor(mon, "invalid-direction")
 
-    @pytest.mark.xfail(reason="BUG-001: move_monitor swallows MonitorControlTypeError")
     def test_raises_on_non_controllable(self):
         """move_monitor should propagate MonitorControlTypeError to callers."""
         c = _client()
@@ -213,7 +211,6 @@ class TestMoveMonitor:
         with pytest.raises(MonitorControlTypeError):
             c.move_monitor(mon, "right")
 
-    @pytest.mark.xfail(reason="BUG-001: move_monitor has no return statement")
     @patch("zoneminder.monitor.post")
     def test_returns_bool_on_success(self, mock_post):
         """move_monitor should return True on success."""
@@ -223,7 +220,6 @@ class TestMoveMonitor:
         mon = self._make_monitor(controllable=True)
         result = c.move_monitor(mon, "right")
         assert result is True
-
 
 
 class TestStaleTokenRetry:
@@ -252,7 +248,6 @@ class TestStaleTokenRetry:
         assert "old-token" not in second_call_url
 
 
-
 class TestRetryExhaustion:
     """Verify _zm_request returns {} when all retries fail."""
 
@@ -269,7 +264,6 @@ class TestRetryExhaustion:
             result = c._zm_request("get", "api/monitors.json")
 
         assert result == {}
-
 
 
 class TestLoginConnectionError:

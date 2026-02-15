@@ -244,5 +244,5 @@ class Monitor:
             "token": token,
         }
 
-        req = post(url=ptz_url, params=params, timeout=10)
+        req = post(url=ptz_url, params=params, timeout=10, verify=self._client.verify_ssl)
         return bool(req.ok)

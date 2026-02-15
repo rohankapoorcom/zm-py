@@ -6,7 +6,6 @@ from urllib.parse import quote, urljoin
 
 import requests
 
-from zoneminder.exceptions import ControlTypeError, MonitorControlTypeError
 from zoneminder.monitor import Monitor
 from zoneminder.run_state import RunState
 
@@ -256,15 +255,11 @@ class ZoneMinder:
             return server_url
         return f"{server_url}/"
 
-    def move_monitor(self, monitor: Monitor, direction: str):
+    def move_monitor(self, monitor: Monitor, direction: str) -> bool:
         """Call Zoneminder to move."""
-        try:
-            result = monitor.ptz_control_command(direction, self._auth_token, self._server_url)
-            if result:
-                _LOGGER.info("Success to move camera to %s", direction)
-            else:
-                _LOGGER.error("Impossible to move camera to %s", direction)
-        except ControlTypeError:
-            _LOGGER.exception("Impossible move monitor")
-        except MonitorControlTypeError:
-            _LOGGER.exception("Impossible to use direction")
+        result = monitor.ptz_control_command(direction, self._auth_token, self._server_url)
+        if result:
+            _LOGGER.info("Success to move camera to %s", direction)
+        else:
+            _LOGGER.error("Failed to move camera to %s", direction)
+        return result

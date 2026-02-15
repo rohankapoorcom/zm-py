@@ -6,19 +6,11 @@ Verified against ZoneMinder **1.38.0**, API version **2.0**.
 
 ---
 
-## BUG-001: `move_monitor()` swallows exceptions silently
+## BUG-001: ~~`move_monitor()` swallows exceptions silently~~ FIXED
 
-**File:** `zoneminder/zm.py:242-253`
-**Verified:** E2E confirmed -- `test_move_monitor_swallows_exception`
-
-`move_monitor()` catches both `ControlTypeError` and
-`MonitorControlTypeError`, logs them, and returns `None`. Callers cannot
-distinguish success from failure.
-
-**Expected:** Re-raise or return a boolean. `MonitorControlTypeError`
-(non-controllable monitor) should propagate since it's a programming error.
-
-**Impact:** HA integration silently ignores PTZ failures.
+**File:** `zoneminder/zm.py` — `move_monitor()`
+**Status:** Fixed. Exceptions now propagate to callers; method returns `bool`.
+**Test:** `tests/test_client.py::TestMoveMonitor`
 
 ---
 
@@ -48,16 +40,11 @@ or the last `update_monitor()`. No refresh before reading.
 
 ---
 
-## BUG-004: PTZ ignores `verify_ssl` setting
+## BUG-004: ~~PTZ ignores `verify_ssl` setting~~ FIXED
 
-**File:** `zoneminder/monitor.py:246`
-**Verified:** Code review -- `requests.post()` has no `verify=` kwarg.
-Every other API call passes `verify=self._verify_ssl`.
-
-**Expected:** Pass `verify=self._client._verify_ssl`.
-
-**Impact:** PTZ fails with SSL errors on self-signed HTTPS setups even when
-`verify_ssl=False`.
+**File:** `zoneminder/monitor.py` — `ptz_control_command()`
+**Status:** Fixed. Now passes `verify=self._client._verify_ssl` to `requests.post()`.
+**Test:** `tests/test_monitor.py::TestPtzControlCommand::test_ptz_passes_verify_ssl`
 
 ---
 

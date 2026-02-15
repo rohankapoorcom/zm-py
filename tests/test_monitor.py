@@ -30,6 +30,10 @@ class StubClient:
         self._get_state_return = get_state_return or {}
         self._change_state_calls = []
 
+    @property
+    def verify_ssl(self):
+        return self._verify_ssl
+
     def get_zms_url(self):
         return self._zms_url
 
@@ -379,7 +383,6 @@ class TestPtzControlCommand:
         result = mon.ptz_control_command("right", "tok", "http://zm.test/zm/")
         assert result is False
 
-    @pytest.mark.xfail(reason="BUG-004: PTZ ignores verify_ssl setting")
     @patch("zoneminder.monitor.post")
     def test_ptz_passes_verify_ssl(self, mock_post):
         """PTZ should pass verify= kwarg to requests.post."""
@@ -389,4 +392,4 @@ class TestPtzControlCommand:
         mon = Monitor(client, _make_raw(controllable="1"))
         mon.ptz_control_command("right", "tok", "http://zm.test/zm/")
         call_kwargs = mock_post.call_args
-        assert "verify" in call_kwargs.kwargs
+        assert call_kwargs.kwargs["verify"] is False
