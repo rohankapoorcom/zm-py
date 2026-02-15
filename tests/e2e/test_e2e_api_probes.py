@@ -5,6 +5,24 @@ verify whether zm-py's assumptions and parsing are correct.  Failures here
 mean our code disagrees with reality.
 
 Each test logs the actual raw value so we can see it in pytest -v --tb=long.
+
+ZM 1.38.0 API Response Types (verified via E2E):
+  host/login.json        access_token         str   JWT eyJ...
+  host/login.json        refresh_token        str   JWT eyJ... (zm-py ignores)
+  host/login.json        access_token_expires int   7200
+  host/login.json        credentials          str   auth=258e... (zm-py ignores)
+  host/login.json        append_password      int   0 (zm-py ignores)
+  host/daemonCheck.json  result               int   1
+  host/getVersion.json   version              str   '1.38.0'
+  host/getVersion.json   apiversion           str   '2.0'
+  monitors.json          item keys            --    Monitor, Manufacturer, CameraModel,
+                                                    Monitor_Status, Event_Summary
+  monitors/{id}.json     envelope             --    {"monitor": {"Monitor": {...}, ...}}
+  Monitor_Status         CaptureFPS           str   '10.00'
+  monitors/alarm/...     status               int   0
+  monitors/daemonStatus  status               bool  True
+  events/consoleEvents   results              dict  {'1': 133, '3': 39, ...}
+  states.json            IsActive             int   1 or 0
 """
 
 from __future__ import annotations
