@@ -43,7 +43,6 @@ class TestPtzNonControllable:
                 "right", zm_client._auth_token, zm_client._server_url
             )
 
-    @pytest.mark.xfail(reason="BUG-001: move_monitor swallows MonitorControlTypeError")
     def test_move_monitor_raises_on_non_controllable(self, zm_client, non_controllable_monitor):
         """move_monitor() should propagate MonitorControlTypeError to callers."""
         with pytest.raises(MonitorControlTypeError):

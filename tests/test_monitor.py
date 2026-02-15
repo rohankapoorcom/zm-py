@@ -417,6 +417,34 @@ class TestPtzControlCommand:
         call_kwargs = mock_post.call_args
         assert call_kwargs.kwargs["verify"] is False
 
+    @patch("zoneminder.monitor.post")
+    def test_returns_false_on_connection_error(self, mock_post):
+        """ConnectionError should return False, not crash."""
+        import requests as _req
+
+        mock_post.side_effect = _req.exceptions.ConnectionError("refused")
+        mon = Monitor(StubClient(), _make_raw(controllable="1"))
+        result = mon.ptz_control_command("right", "tok", "http://zm.test/zm/")
+        assert result is False
+
+    @patch("zoneminder.monitor.post")
+    def test_no_token_param_when_token_is_none(self, mock_post):
+        """Legacy auth: token=None should not appear in params."""
+        mock_post.return_value.ok = True
+        mon = Monitor(StubClient(), _make_raw(controllable="1"))
+        mon.ptz_control_command("right", None, "http://zm.test/zm/")
+        params = mock_post.call_args.kwargs["params"]
+        assert "token" not in params
+
+    @patch("zoneminder.monitor.post")
+    def test_cookies_passed_through(self, mock_post):
+        """Cookies should be forwarded to requests.post."""
+        mock_post.return_value.ok = True
+        mon = Monitor(StubClient(), _make_raw(controllable="1"))
+        cookies = {"ZMSESSID": "abc123"}
+        mon.ptz_control_command("right", None, "http://zm.test/zm/", cookies=cookies)
+        assert mock_post.call_args.kwargs["cookies"] == cookies
+
 
 # ---------------------------------------------------------------------------
 # Multi-server URL routing

@@ -353,7 +353,7 @@ class ZoneMinder:
     def move_monitor(self, monitor: Monitor, direction: str) -> bool:
         """Call Zoneminder to move."""
         base_url = self.get_server_url_for_monitor(monitor.raw_monitor)
-        result = monitor.ptz_control_command(direction, self._auth_token, base_url)
+        result = monitor.ptz_control_command(direction, self._auth_token, base_url, self._cookies)
         if result:
             _LOGGER.info("Success to move camera to %s", direction)
         else:

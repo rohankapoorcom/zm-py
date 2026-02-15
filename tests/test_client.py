@@ -241,6 +241,16 @@ class TestMoveMonitor:
         result = c.move_monitor(mon, "right")
         assert result is True
 
+    @patch("zoneminder.monitor.post")
+    def test_passes_cookies_to_ptz(self, mock_post):
+        """move_monitor should forward session cookies for legacy auth."""
+        mock_post.return_value.ok = True
+        c = _client()
+        c._cookies = {"ZMSESSID": "abc123"}
+        mon = self._make_monitor(controllable=True)
+        c.move_monitor(mon, "right")
+        assert mock_post.call_args.kwargs["cookies"] == {"ZMSESSID": "abc123"}
+
 
 class TestStaleTokenRetry:
     """Verify _zm_request recomputes token suffix after login() refreshes the token."""

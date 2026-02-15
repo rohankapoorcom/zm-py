@@ -5,6 +5,7 @@ import logging
 from typing import Optional
 from urllib.parse import urlencode
 
+import requests
 from requests import post
 
 from .exceptions import ControlTypeError, MonitorControlTypeError
@@ -237,7 +238,7 @@ class Monitor:
         _LOGGER.debug("Monitor %s %s URL (without auth): %s", monitor["Id"], mode, url)
         return self._client.get_url_with_auth(url)
 
-    def ptz_control_command(self, direction, token, base_url) -> bool:
+    def ptz_control_command(self, direction, token, base_url, cookies=None) -> bool:
         """Move camera."""
         if not self.controllable:
             raise MonitorControlTypeError()
@@ -250,8 +251,19 @@ class Monitor:
             "id": self.id,
             "control": ControlType.from_move(direction).value,
             "xge": 43,
-            "token": token,
         }
+        if token:
+            params["token"] = token
 
-        req = post(url=ptz_url, params=params, timeout=10, verify=self._client.verify_ssl)
+        try:
+            req = post(
+                url=ptz_url,
+                params=params,
+                cookies=cookies,
+                timeout=10,
+                verify=self._client.verify_ssl,
+            )
+        except requests.exceptions.ConnectionError:
+            _LOGGER.exception("Unable to connect to ZoneMinder for PTZ control")
+            return False
         return bool(req.ok)
