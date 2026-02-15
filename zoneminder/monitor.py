@@ -2,6 +2,7 @@
 
 from enum import Enum
 import logging
+import time
 from typing import Optional
 from urllib.parse import urlencode
 
@@ -145,6 +146,7 @@ class Monitor:
         """Create a new Monitor."""
         self._client = client
         self._raw_result = raw_result
+        self._last_update = 0.0
         raw_monitor = raw_result["Monitor"]
         self._monitor_id = int(raw_monitor["Id"])
         self._monitor_url = f"api/monitors/{self._monitor_id}.json"
@@ -180,8 +182,12 @@ class Monitor:
 
     def update_monitor(self):
         """Update the monitor and monitor status from the ZM server."""
+        now = time.monotonic()
+        if now - self._last_update < 1.0:
+            return
         result = self._client.get_state(self._monitor_url)
         self._raw_result = result["monitor"]
+        self._last_update = now
 
     @property
     def function(self) -> MonitorState:
@@ -194,6 +200,7 @@ class Monitor:
     def function(self, new_function):
         """Set the MonitorState of this Monitor."""
         self._client.change_state(self._monitor_url, {"Monitor[Function]": new_function.value})
+        self._last_update = 0.0
 
     @property
     def controllable(self) -> bool:

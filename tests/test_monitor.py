@@ -41,6 +41,7 @@ class StubClient:
         self._verify_ssl = False
         self._zm_version = zm_version
         self._get_state_return = get_state_return or {}
+        self._get_state_call_count = 0
         self._change_state_calls = []
 
     @property
@@ -57,6 +58,7 @@ class StubClient:
         return url + "&user=admin&pass=secret"
 
     def get_state(self, api_url):
+        self._get_state_call_count += 1
         return self._get_state_return
 
     def change_state(self, api_url, post_data):
@@ -400,6 +402,69 @@ class TestUpdateMonitor:
         mon = Monitor(client, _make_raw())
         mon.update_monitor()
         assert mon._raw_result["Monitor"]["Function"] == "Mocord"
+
+    def test_second_call_within_ttl_does_not_refetch(self):
+        """Within 1s TTL, update_monitor should use cached data."""
+        updated = {
+            "monitor": {
+                "Monitor": {"Function": "Mocord"},
+                "Monitor_Status": {"CaptureFPS": "15.00"},
+            }
+        }
+        client = StubClient(get_state_return=updated)
+        mon = Monitor(client, _make_raw())
+        mon.update_monitor()
+        mon.update_monitor()
+        mon.update_monitor()
+        assert client._get_state_call_count == 1
+
+    @patch("zoneminder.monitor.time.monotonic")
+    def test_cache_expires_after_ttl(self, mock_monotonic):
+        """After TTL expires, update_monitor should re-fetch."""
+        updated = {
+            "monitor": {
+                "Monitor": {"Function": "Mocord"},
+                "Monitor_Status": {"CaptureFPS": "15.00"},
+            }
+        }
+        client = StubClient(get_state_return=updated)
+        mon = Monitor(client, _make_raw())
+
+        mock_monotonic.return_value = 100.0
+        mon.update_monitor()
+        assert client._get_state_call_count == 1
+
+        # Still within TTL
+        mock_monotonic.return_value = 100.5
+        mon.update_monitor()
+        assert client._get_state_call_count == 1
+
+        # TTL expired
+        mock_monotonic.return_value = 101.1
+        mon.update_monitor()
+        assert client._get_state_call_count == 2
+
+    def test_function_setter_invalidates_cache(self):
+        """After setting function, next read should re-fetch."""
+        updated = {
+            "monitor": {
+                "Monitor": {"Function": "Record"},
+                "Monitor_Status": {"CaptureFPS": "10.00"},
+            }
+        }
+        client = StubClient(get_state_return=updated)
+        mon = Monitor(client, _make_raw())
+
+        # First read fetches
+        _ = mon.function
+        assert client._get_state_call_count == 1
+
+        # Set function (invalidates cache)
+        mon.function = MonitorState.RECORD
+
+        # Next read should re-fetch despite being within 1s
+        _ = mon.function
+        assert client._get_state_call_count == 2
 
 
 # ---------------------------------------------------------------------------
