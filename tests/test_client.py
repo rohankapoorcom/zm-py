@@ -102,10 +102,22 @@ class TestIsAvailable:
         with patch.object(c, "get_state", return_value={}):
             assert c.is_available is False
 
-    def test_false_when_result_is_string(self):
-        """zm-py compares == 1 (int), so string '1' returns False (BUG-002 territory)."""
+    def test_true_when_result_is_string(self):
+        """String '1' should be coerced to int and return True."""
         c = _client()
         with patch.object(c, "get_state", return_value={"result": "1"}):
+            assert c.is_available is True
+
+    def test_false_when_result_is_non_numeric(self):
+        """Non-numeric result should return False, not crash."""
+        c = _client()
+        with patch.object(c, "get_state", return_value={"result": "bad"}):
+            assert c.is_available is False
+
+    def test_false_when_result_is_none(self):
+        """None result should return False, not crash."""
+        c = _client()
+        with patch.object(c, "get_state", return_value={"result": None}):
             assert c.is_available is False
 
 

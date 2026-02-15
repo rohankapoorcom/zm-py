@@ -330,7 +330,13 @@ class ZoneMinder:
         if not status_response:
             return False
 
-        return status_response.get("result") == 1
+        result = status_response.get("result")
+        if result is None:
+            return False
+        try:
+            return int(result) == 1
+        except (ValueError, TypeError):
+            return False
 
     @property
     def verify_ssl(self) -> bool:
