@@ -23,20 +23,12 @@ after `self.login()` refreshes `self._auth_token`.
 
 ---
 
-## BUG-003: `Monitor.is_available` uses stale `_raw_result`
+## BUG-003: ~~`Monitor.is_available` uses stale `_raw_result`~~ FIXED
 
-**File:** `zoneminder/monitor.py:173-187`
-**Verified:** E2E confirmed `Monitor_Status` exists with `CaptureFPS='10.00'`
-(str) on both list and single endpoints, but `is_available` reads from
-`_raw_result` set at construction time.
-
-`is_available` fetches fresh `daemonStatus` but reads `Monitor_Status` /
-`CaptureFPS` from `self._raw_result` which was set during `get_monitors()`
-or the last `update_monitor()`. No refresh before reading.
-
-**Expected:** Call `update_monitor()` first, or read from the daemon response.
-
-**Impact:** `is_available` returns stale results when capture state changes.
+**File:** `zoneminder/monitor.py` — `is_available`
+**Status:** Fixed. Now calls `update_monitor()` before reading `Monitor_Status`.
+Also returns `False` when `Monitor_Status` is missing (pre-1.32.3 ZM).
+**Test:** `tests/test_monitor.py::TestMonitorIsAvailable`
 
 ---
 

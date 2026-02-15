@@ -181,9 +181,13 @@ class Monitor:
             _LOGGER.warning("Could not get availability for monitor %s.", self._monitor_id)
             return False
 
+        self.update_monitor()
+
         # Monitor_Status was only added in ZM 1.32.3
         monitor_status = self._raw_result.get("Monitor_Status", None)
-        capture_fps = monitor_status and monitor_status["CaptureFPS"]
+        if not monitor_status:
+            return False
+        capture_fps = monitor_status.get("CaptureFPS", "0.00")
 
         return status_response.get("status", False) and capture_fps != "0.00"
 

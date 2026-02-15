@@ -206,40 +206,53 @@ class TestMonitorIsRecording:
 # ---------------------------------------------------------------------------
 
 class TestMonitorIsAvailable:
-    def test_available_when_daemon_running_and_fps_nonzero(self):
-        client = StubClient(get_state_return={"status": True})
+    def _make_available_monitor(self, daemon_status, capture_fps="10.00", has_monitor_status=True):
+        """Build a monitor with patched update_monitor for is_available tests."""
+        client = StubClient(get_state_return=daemon_status)
         raw = _make_raw()
-        raw["Monitor_Status"] = {"CaptureFPS": "10.00"}
+        if has_monitor_status:
+            raw["Monitor_Status"] = {"CaptureFPS": capture_fps}
+        else:
+            del raw["Monitor_Status"]
         mon = Monitor(client, raw)
+        # Patch update_monitor to be a no-op since _raw_result is already set
+        # and StubClient can only return one response shape
+        mon.update_monitor = lambda: None
+        return mon
+
+    def test_available_when_daemon_running_and_fps_nonzero(self):
+        mon = self._make_available_monitor({"status": True}, capture_fps="10.00")
         assert mon.is_available is True
 
     def test_unavailable_when_daemon_not_running(self):
-        client = StubClient(get_state_return={"status": False})
-        raw = _make_raw()
-        raw["Monitor_Status"] = {"CaptureFPS": "10.00"}
-        mon = Monitor(client, raw)
+        mon = self._make_available_monitor({"status": False}, capture_fps="10.00")
         assert mon.is_available is False
 
     def test_unavailable_when_fps_zero(self):
-        client = StubClient(get_state_return={"status": True})
-        raw = _make_raw()
-        raw["Monitor_Status"] = {"CaptureFPS": "0.00"}
-        mon = Monitor(client, raw)
+        mon = self._make_available_monitor({"status": True}, capture_fps="0.00")
         assert mon.is_available is False
 
-    @pytest.mark.xfail(reason="BUG-003: is_available uses stale _raw_result, missing Monitor_Status treated as available")
     def test_unavailable_when_no_monitor_status(self):
         """Without Monitor_Status, should be unavailable."""
-        client = StubClient(get_state_return={"status": True})
-        raw = _make_raw()
-        del raw["Monitor_Status"]
-        mon = Monitor(client, raw)
+        mon = self._make_available_monitor({"status": True}, has_monitor_status=False)
         assert mon.is_available is False
 
     def test_unavailable_when_no_response(self):
         client = StubClient(get_state_return={})
         mon = Monitor(client, _make_raw())
         assert mon.is_available is False
+
+    def test_fetches_fresh_data(self):
+        """is_available should call update_monitor to get fresh Monitor_Status."""
+        client = StubClient(get_state_return={"status": True})
+        raw = _make_raw()
+        raw["Monitor_Status"] = {"CaptureFPS": "0.00"}
+        mon = Monitor(client, raw)
+        # Simulate update_monitor refreshing _raw_result with new FPS
+        fresh_raw = _make_raw()
+        fresh_raw["Monitor_Status"] = {"CaptureFPS": "15.00"}
+        mon.update_monitor = lambda: setattr(mon, "_raw_result", fresh_raw)
+        assert mon.is_available is True
 
 
 # ---------------------------------------------------------------------------
