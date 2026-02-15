@@ -8,9 +8,10 @@ URL building tests remain in test_zm.py (the original upstream tests).
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from zoneminder.exceptions import ControlTypeError, MonitorControlTypeError
 from zoneminder.monitor import Monitor
@@ -222,3 +223,77 @@ class TestMoveMonitor:
         mon = self._make_monitor(controllable=True)
         result = c.move_monitor(mon, "right")
         assert result is True
+
+
+
+class TestStaleTokenRetry:
+    """Verify _zm_request recomputes token suffix after login() refreshes the token."""
+
+    @patch("zoneminder.zm.requests.request")
+    def test_uses_refreshed_token_after_relogin(self, mock_request):
+        """After a 401 triggers login(), the next request should use the new token."""
+        c = _client()
+        c._auth_token = "old-token"
+
+        # First call returns 401, second call returns 200
+        resp_fail = MagicMock(ok=False, status_code=401)
+        resp_ok = MagicMock(ok=True)
+        resp_ok.json.return_value = {"result": 1}
+        mock_request.side_effect = [resp_fail, resp_ok]
+
+        # login() refreshes the token
+        with patch.object(c, "login", side_effect=lambda: setattr(c, "_auth_token", "new-token")):
+            result = c._zm_request("get", "api/host/daemonCheck.json")
+
+        assert result == {"result": 1}
+        # Second call should have used new-token, not old-token
+        second_call_url = mock_request.call_args_list[1][1].get("url", mock_request.call_args_list[1][0][1])
+        assert "new-token" in second_call_url
+        assert "old-token" not in second_call_url
+
+
+
+class TestRetryExhaustion:
+    """Verify _zm_request returns {} when all retries fail."""
+
+    @patch("zoneminder.zm.requests.request")
+    def test_returns_empty_dict_on_exhaustion(self, mock_request):
+        """When all retries fail, return {} instead of error response JSON."""
+        c = _client()
+
+        resp_fail = MagicMock(ok=False, status_code=401)
+        resp_fail.json.return_value = {"error": "Unauthorized"}
+        mock_request.return_value = resp_fail
+
+        with patch.object(c, "login"):
+            result = c._zm_request("get", "api/monitors.json")
+
+        assert result == {}
+
+
+
+class TestLoginConnectionError:
+    """Verify login() returns False on ConnectionError instead of crashing."""
+
+    @patch("zoneminder.zm.requests.post")
+    def test_login_returns_false_on_connection_error(self, mock_post):
+        """login() should catch ConnectionError and return False."""
+        mock_post.side_effect = requests.exceptions.ConnectionError("refused")
+        c = _client()
+        assert c.login() is False
+
+    @patch("zoneminder.zm.requests.post")
+    def test_legacy_auth_post_connection_error(self, mock_post):
+        """_legacy_auth() should catch ConnectionError on the POST."""
+        mock_post.side_effect = requests.exceptions.ConnectionError("refused")
+        c = _client()
+        assert c._legacy_auth() is False
+
+    @patch("zoneminder.zm.requests.get")
+    @patch("zoneminder.zm.requests.post")
+    def test_legacy_auth_get_connection_error(self, mock_post, mock_get):
+        """_legacy_auth() should catch ConnectionError on the verification GET."""
+        mock_post.return_value = MagicMock(cookies={})
+        mock_get.side_effect = requests.exceptions.ConnectionError("refused")
+        c = _client()
+        assert c._legacy_auth() is False

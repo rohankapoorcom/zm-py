@@ -22,18 +22,12 @@ distinguish success from failure.
 
 ---
 
-## BUG-002: Stale JWT token used after re-login in retry loop
+## BUG-002: ~~Stale JWT token used after re-login in retry loop~~ FIXED
 
-**File:** `zoneminder/zm.py:108-129`
-**Verified:** Code review (token expiry not safely triggerable in e2e)
-
-`_zm_request()` computes `token_url_suffix` once before the retry loop
-(line 110-112). After `self.login()` refreshes `self._auth_token` (line 127),
-the next iteration still uses the old pre-computed suffix.
-
-**Expected:** Recompute token suffix inside the loop after re-login.
-
-**Impact:** JWT retry is broken -- second attempt reuses the expired token.
+**File:** `zoneminder/zm.py` — `_zm_request()`
+**Status:** Fixed. `token_url_suffix` is now recomputed inside the retry loop
+after `self.login()` refreshes `self._auth_token`.
+**Test:** `tests/test_client.py::TestStaleTokenRetry`
 
 ---
 
@@ -67,31 +61,21 @@ Every other API call passes `verify=self._verify_ssl`.
 
 ---
 
-## BUG-005: `_zm_request` returns error response on retry exhaustion
+## BUG-005: ~~`_zm_request` returns error response on retry exhaustion~~ FIXED
 
-**File:** `zoneminder/zm.py:131-135`
-**Verified:** Code review (retry exhaustion not safely triggerable in e2e)
-
-When all retries fail (for/else on line 131), execution falls through to
-`req.json()` on line 135, returning the last failed response's JSON body
-as if it were success data.
-
-**Expected:** Return `{}` or raise, consistent with the `ConnectionError`
-handler on line 143.
-
-**Impact:** Callers silently process error responses as valid data.
+**File:** `zoneminder/zm.py` — `_zm_request()`
+**Status:** Fixed. The `for/else` clause now returns `{}` when all retries
+are exhausted, consistent with the `ConnectionError` handler.
+**Test:** `tests/test_client.py::TestRetryExhaustion`
 
 ---
 
-## BUG-006: `login()` does not catch `ConnectionError`
+## BUG-006: ~~`login()` does not catch `ConnectionError`~~ FIXED
 
-**File:** `zoneminder/zm.py:53-67`
-**Verified:** Code review -- `login()` calls `requests.post()` with no
-try/except, while `_zm_request()` catches `ConnectionError` on line 142.
-
-**Expected:** Catch `ConnectionError` and return `False`.
-
-**Impact:** Uncaught exception crashes HA integration setup when ZM is down.
+**File:** `zoneminder/zm.py` — `login()` and `_legacy_auth()`
+**Status:** Fixed. Both `login()` and `_legacy_auth()` now catch
+`requests.exceptions.ConnectionError` and return `False`.
+**Test:** `tests/test_client.py::TestLoginConnectionError`
 
 ---
 

@@ -51,12 +51,17 @@ class ZoneMinder:
         if self._password:
             login_post["pass"] = self._password
 
-        req = requests.post(
-            urljoin(self._server_url, "api/host/login.json"),
-            data=login_post,
-            verify=self._verify_ssl,
-            timeout=ZoneMinder.DEFAULT_TIMEOUT,
-        )
+        try:
+            req = requests.post(
+                urljoin(self._server_url, "api/host/login.json"),
+                data=login_post,
+                verify=self._verify_ssl,
+                timeout=ZoneMinder.DEFAULT_TIMEOUT,
+            )
+        except requests.exceptions.ConnectionError:
+            _LOGGER.exception("Unable to connect to ZoneMinder during login")
+            return False
+
         if req.ok:
             try:
                 self._auth_token = req.json()["access_token"]
@@ -74,23 +79,32 @@ class ZoneMinder:
         if self._password:
             login_post["password"] = self._password
 
-        req = requests.post(
-            urljoin(self._server_url, "index.php"),
-            data=login_post,
-            verify=self._verify_ssl,
-            timeout=ZoneMinder.DEFAULT_TIMEOUT,
-        )
+        try:
+            req = requests.post(
+                urljoin(self._server_url, "index.php"),
+                data=login_post,
+                verify=self._verify_ssl,
+                timeout=ZoneMinder.DEFAULT_TIMEOUT,
+            )
+        except requests.exceptions.ConnectionError:
+            _LOGGER.exception("Unable to connect to ZoneMinder during legacy login")
+            return False
+
         self._cookies = req.cookies
 
         # Login calls returns a 200 response on both failure and success.
         # The only way to tell if you logged in correctly is to issue an api
         # call.
-        req = requests.get(
-            urljoin(self._server_url, "api/host/getVersion.json"),
-            cookies=self._cookies,
-            timeout=ZoneMinder.DEFAULT_TIMEOUT,
-            verify=self._verify_ssl,
-        )
+        try:
+            req = requests.get(
+                urljoin(self._server_url, "api/host/getVersion.json"),
+                cookies=self._cookies,
+                timeout=ZoneMinder.DEFAULT_TIMEOUT,
+                verify=self._verify_ssl,
+            )
+        except requests.exceptions.ConnectionError:
+            _LOGGER.exception("Unable to connect to ZoneMinder during legacy login verification")
+            return False
 
         if not req.ok:
             _LOGGER.error("Connection error logging into ZoneMinder")
@@ -108,13 +122,14 @@ class ZoneMinder:
 
     def _zm_request(self, method, api_url, data=None, timeout=DEFAULT_TIMEOUT) -> dict:
         """Perform a request to the ZoneMinder API."""
-        token_url_suffix = ""
-        if self._auth_token:
-            token_url_suffix = "?token=" + self._auth_token
         try:
             # Since the API uses sessions that expire, sometimes we need to
             # re-auth if the call fails.
             for _ in range(ZoneMinder.LOGIN_RETRIES):
+                token_url_suffix = ""
+                if self._auth_token:
+                    token_url_suffix = "?token=" + self._auth_token
+
                 req = requests.request(
                     method,
                     urljoin(self._server_url, api_url) + token_url_suffix,
@@ -131,6 +146,7 @@ class ZoneMinder:
 
             else:
                 _LOGGER.error("Unable to get API response from ZoneMinder")
+                return {}
 
             try:
                 return req.json()
