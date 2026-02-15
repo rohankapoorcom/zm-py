@@ -18,11 +18,21 @@ ZM 1.38.0 API Response Types (verified via E2E):
   monitors.json          item keys            --    Monitor, Manufacturer, CameraModel,
                                                     Monitor_Status, Event_Summary
   monitors/{id}.json     envelope             --    {"monitor": {"Monitor": {...}, ...}}
+  Monitor                ServerId             str   '0' (single-server) or server id
   Monitor_Status         CaptureFPS           str   '10.00'
   monitors/alarm/...     status               int   0
   monitors/daemonStatus  status               bool  True
   events/consoleEvents   results              dict  {'1': 133, '3': 39, ...}
   states.json            IsActive             int   1 or 0
+  servers.json           envelope             --    {"servers": [{"Server": {...}}, ...]}
+  Server                 Id                   str   '1'
+  Server                 Name                 str   'Server1'
+  Server                 Hostname             str   'zm1.example.com'
+  Server                 Protocol             str   'https' (optional, default 'http')
+  Server                 Port                 str   null or port number (optional)
+  Server                 PathToZMS            str   '/zm/cgi-bin/nph-zms' (optional)
+  Server                 PathToIndex          str   '/zm/index.php' (optional)
+  Server                 Status               str   'Online' (optional)
 """
 
 from __future__ import annotations
@@ -36,28 +46,6 @@ import requests
 pytestmark = pytest.mark.zm_e2e
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Raw API helpers (bypass zm-py, hit the API directly)
-# ---------------------------------------------------------------------------
-
-@pytest.fixture(scope="session")
-def raw_session(zm_client):
-    """A requests.Session with the JWT token from zm_client."""
-    s = requests.Session()
-    s.verify = zm_client._verify_ssl
-    if zm_client._auth_token:
-        s.params = {"token": zm_client._auth_token}
-    elif zm_client._cookies:
-        s.cookies = zm_client._cookies
-    return s
-
-
-@pytest.fixture(scope="session")
-def api_base(zm_client):
-    """The base API URL (server_url)."""
-    return zm_client._server_url
 
 
 # ---------------------------------------------------------------------------

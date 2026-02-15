@@ -36,6 +36,9 @@ class StubClient:
     def get_zms_url(self):
         return self._zms_url
 
+    def get_zms_url_for_monitor(self, raw_monitor):
+        return self._zms_url
+
     def get_url_with_auth(self, url):
         return url + "&user=admin&pass=secret"
 
@@ -53,6 +56,7 @@ def _make_raw(
     controllable="0",
     function="Monitor",
     buffer="0",
+    server_id="0",
 ):
     """Build a raw monitor result dict matching the ZM API shape."""
     return {
@@ -62,6 +66,7 @@ def _make_raw(
             "Controllable": controllable,
             "Function": function,
             "StreamReplayBuffer": buffer,
+            "ServerId": server_id,
         },
         "Monitor_Status": {
             "CaptureFPS": "10.00",
@@ -405,3 +410,38 @@ class TestPtzControlCommand:
         mon.ptz_control_command("right", "tok", "http://zm.test/zm/")
         call_kwargs = mock_post.call_args
         assert call_kwargs.kwargs["verify"] is False
+
+
+# ---------------------------------------------------------------------------
+# Multi-server URL routing
+# ---------------------------------------------------------------------------
+
+
+class TestMonitorMultiServerUrls:
+    """Verify that Monitor delegates ZMS URL resolution to the client."""
+
+    def test_raw_monitor_property(self):
+        mon = Monitor(StubClient(), _make_raw())
+        assert mon.raw_monitor["Id"] == "1"
+        assert mon.raw_monitor["Name"] == "Front Door"
+
+    def test_raw_monitor_contains_server_id(self):
+        mon = Monitor(StubClient(), _make_raw(server_id="2"))
+        assert mon.raw_monitor["ServerId"] == "2"
+
+    def test_image_url_uses_get_zms_url_for_monitor(self):
+        """_build_image_url should call get_zms_url_for_monitor, not get_zms_url."""
+        client = StubClient(zms_url="http://main.test/zm/cgi-bin/nph-zms")
+
+        # Override to return a per-server URL
+        client.get_zms_url_for_monitor = lambda raw: "http://server2.test/zm/cgi-bin/nph-zms"
+
+        mon = Monitor(client, _make_raw(server_id="2"))
+        assert mon.mjpeg_image_url.startswith("http://server2.test/zm/cgi-bin/nph-zms?")
+        assert mon.still_image_url.startswith("http://server2.test/zm/cgi-bin/nph-zms?")
+
+    def test_image_url_falls_back_to_main(self):
+        """ServerId=0 should use the main ZMS URL."""
+        client = StubClient(zms_url="http://main.test/zm/cgi-bin/nph-zms")
+        mon = Monitor(client, _make_raw(server_id="0"))
+        assert mon.mjpeg_image_url.startswith("http://main.test/zm/cgi-bin/nph-zms?")

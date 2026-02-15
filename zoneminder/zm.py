@@ -8,6 +8,7 @@ import requests
 
 from zoneminder.monitor import Monitor
 from zoneminder.run_state import RunState
+from zoneminder.server import Server
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ class ZoneMinder:
     DEFAULT_TIMEOUT = 10
     LOGIN_RETRIES = 2
     MONITOR_URL = "api/monitors.json"
+    SERVERS_URL = "api/servers.json"
 
     def __init__(
         self,
@@ -38,6 +40,7 @@ class ZoneMinder:
         self._verify_ssl = verify_ssl
         self._cookies = None
         self._auth_token = None
+        self._servers: Optional[dict[int, Server]] = None
 
     def login(self):
         """Login to the ZoneMinder API."""
@@ -191,6 +194,95 @@ class ZoneMinder:
 
         return run_states
 
+    def get_servers(self) -> List[Server]:
+        """Get a list of Servers from the ZoneMinder API."""
+        raw_servers = self.get_state(ZoneMinder.SERVERS_URL)
+        if not raw_servers:
+            _LOGGER.warning("Could not fetch servers from ZoneMinder")
+            return []
+
+        if "servers" not in raw_servers:
+            _LOGGER.warning("Could not parse list of servers from ZoneMinder")
+            return []
+
+        servers = []
+        for i in raw_servers["servers"]:
+            raw_server = i["Server"]
+            _LOGGER.info("Initializing server %s", raw_server["Id"])
+            servers.append(Server(raw_server))
+
+        return servers
+
+    def _ensure_servers(self) -> dict[int, Server]:
+        """Lazy-fetch and cache the server map as {server_id: Server}."""
+        if self._servers is None:
+            self._servers = {s.id: s for s in self.get_servers()}
+        return self._servers
+
+    def get_zms_url_for_monitor(self, raw_monitor) -> str:
+        """Resolve the correct ZMS URL for a monitor based on its ServerId.
+
+        Falls back to the main client ZMS URL when ServerId is missing, "0",
+        or refers to an unknown server.
+        """
+        server_id_str = raw_monitor.get("ServerId", "0")
+        try:
+            server_id = int(server_id_str)
+        except (ValueError, TypeError):
+            _LOGGER.warning(
+                "Monitor %s has invalid ServerId %r, using main ZMS URL",
+                raw_monitor.get("Id"),
+                server_id_str,
+            )
+            return self._zms_url
+
+        if server_id == 0:
+            return self._zms_url
+
+        servers = self._ensure_servers()
+        server = servers.get(server_id)
+        if server is None:
+            _LOGGER.warning(
+                "Monitor %s references unknown ServerId %d, using main ZMS URL",
+                raw_monitor.get("Id"),
+                server_id,
+            )
+            return self._zms_url
+
+        return server.zms_url
+
+    def get_server_url_for_monitor(self, raw_monitor) -> str:
+        """Resolve the correct base URL for a monitor based on its ServerId.
+
+        Used for PTZ commands and other control requests. Falls back to the
+        main client server URL when ServerId is missing, "0", or unknown.
+        """
+        server_id_str = raw_monitor.get("ServerId", "0")
+        try:
+            server_id = int(server_id_str)
+        except (ValueError, TypeError):
+            _LOGGER.warning(
+                "Monitor %s has invalid ServerId %r, using main server URL",
+                raw_monitor.get("Id"),
+                server_id_str,
+            )
+            return self._server_url
+
+        if server_id == 0:
+            return self._server_url
+
+        servers = self._ensure_servers()
+        server = servers.get(server_id)
+        if server is None:
+            _LOGGER.warning(
+                "Monitor %s references unknown ServerId %d, using main server URL",
+                raw_monitor.get("Id"),
+                server_id,
+            )
+            return self._server_url
+
+        return server.base_url
+
     def get_active_state(self) -> Optional[str]:
         """Get the name of the active run state from the ZoneMinder API."""
         for state in self.get_run_states():
@@ -256,7 +348,8 @@ class ZoneMinder:
 
     def move_monitor(self, monitor: Monitor, direction: str) -> bool:
         """Call Zoneminder to move."""
-        result = monitor.ptz_control_command(direction, self._auth_token, self._server_url)
+        base_url = self.get_server_url_for_monitor(monitor.raw_monitor)
+        result = monitor.ptz_control_command(direction, self._auth_token, base_url)
         if result:
             _LOGGER.info("Success to move camera to %s", direction)
         else:

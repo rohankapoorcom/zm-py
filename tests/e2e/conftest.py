@@ -195,6 +195,24 @@ def monitors(zm_client: ZoneMinder):
     return result
 
 
+@pytest.fixture(scope="session")
+def raw_session(zm_client: ZoneMinder):
+    """A requests.Session with the JWT token from zm_client."""
+    s = requests.Session()
+    s.verify = zm_client._verify_ssl
+    if zm_client._auth_token:
+        s.params = {"token": zm_client._auth_token}
+    elif zm_client._cookies:
+        s.cookies = zm_client._cookies
+    return s
+
+
+@pytest.fixture(scope="session")
+def api_base(zm_client: ZoneMinder):
+    """The base API URL (server_url)."""
+    return zm_client._server_url
+
+
 # ---------------------------------------------------------------------------
 # E2E summary report
 # ---------------------------------------------------------------------------

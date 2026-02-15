@@ -118,6 +118,11 @@ class Monitor:
         """Get the name of this Monitor."""
         return self._name
 
+    @property
+    def raw_monitor(self) -> dict:
+        """Get the inner 'Monitor' dict from the raw API result."""
+        return self._raw_result["Monitor"]
+
     def update_monitor(self):
         """Update the monitor and monitor status from the ZM server."""
         result = self._client.get_state(self._monitor_url)
@@ -227,7 +232,8 @@ class Monitor:
                 "monitor": monitor["Id"],
             }
         )
-        url = f"{self._client.get_zms_url()}?{query}"
+        zms_url = self._client.get_zms_url_for_monitor(monitor)
+        url = f"{zms_url}?{query}"
         _LOGGER.debug("Monitor %s %s URL (without auth): %s", monitor["Id"], mode, url)
         return self._client.get_url_with_auth(url)
 

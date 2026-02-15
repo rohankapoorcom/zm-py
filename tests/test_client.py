@@ -16,6 +16,7 @@ import requests
 from zoneminder.exceptions import ControlTypeError, MonitorControlTypeError
 from zoneminder.monitor import Monitor
 from zoneminder.run_state import RunState
+from zoneminder.server import Server
 from zoneminder.zm import ZoneMinder
 
 # ---------------------------------------------------------------------------
@@ -35,7 +36,7 @@ def _client(**kwargs) -> ZoneMinder:
     )
 
 
-def _monitor_raw(mid=1, name="Cam", controllable="0", function="Monitor"):
+def _monitor_raw(mid=1, name="Cam", controllable="0", function="Monitor", server_id="0"):
     return {
         "Monitor": {
             "Id": str(mid),
@@ -43,8 +44,23 @@ def _monitor_raw(mid=1, name="Cam", controllable="0", function="Monitor"):
             "Controllable": controllable,
             "Function": function,
             "StreamReplayBuffer": "0",
+            "ServerId": server_id,
         },
         "Monitor_Status": {"CaptureFPS": "10.00"},
+    }
+
+
+def _server_raw(sid=1, name="Server1", hostname="zm1.example.com", protocol="https"):
+    return {
+        "Server": {
+            "Id": str(sid),
+            "Name": name,
+            "Hostname": hostname,
+            "Protocol": protocol,
+            "PathToZMS": "/zm/cgi-bin/nph-zms",
+            "PathToIndex": "/zm/index.php",
+            "Status": "Online",
+        }
     }
 
 
@@ -290,3 +306,116 @@ class TestLoginConnectionError:
         mock_get.side_effect = requests.exceptions.ConnectionError("refused")
         c = _client()
         assert c._legacy_auth() is False
+
+
+# ---------------------------------------------------------------------------
+# get_servers
+# ---------------------------------------------------------------------------
+
+
+class TestGetServers:
+    def test_empty_response_returns_empty_list(self):
+        c = _client()
+        with patch.object(c, "get_state", return_value={}):
+            assert c.get_servers() == []
+
+    def test_no_servers_key_returns_empty_list(self):
+        c = _client()
+        with patch.object(c, "get_state", return_value={"other": "data"}):
+            assert c.get_servers() == []
+
+    def test_valid_response_returns_servers(self):
+        raw = {"servers": [_server_raw(1, "Srv1"), _server_raw(2, "Srv2", hostname="zm2.test")]}
+        c = _client()
+        with patch.object(c, "get_state", return_value=raw):
+            servers = c.get_servers()
+        assert len(servers) == 2
+        assert all(isinstance(s, Server) for s in servers)
+        assert servers[0].name == "Srv1"
+        assert servers[1].hostname == "zm2.test"
+
+    def test_empty_servers_list(self):
+        c = _client()
+        with patch.object(c, "get_state", return_value={"servers": []}):
+            assert c.get_servers() == []
+
+
+# ---------------------------------------------------------------------------
+# Multi-server ZMS routing
+# ---------------------------------------------------------------------------
+
+
+class TestMultiServerZmsRouting:
+    def test_server_id_zero_returns_main_zms(self):
+        c = _client()
+        raw_monitor = {"Id": "1", "ServerId": "0"}
+        assert c.get_zms_url_for_monitor(raw_monitor) == c.get_zms_url()
+
+    def test_missing_server_id_returns_main_zms(self):
+        c = _client()
+        raw_monitor = {"Id": "1"}
+        assert c.get_zms_url_for_monitor(raw_monitor) == c.get_zms_url()
+
+    def test_known_server_returns_server_zms(self):
+        c = _client()
+        raw = {"servers": [_server_raw(2, "Srv2", hostname="zm2.test", protocol="https")]}
+        with patch.object(c, "get_state", return_value=raw):
+            raw_monitor = {"Id": "1", "ServerId": "2"}
+            result = c.get_zms_url_for_monitor(raw_monitor)
+        assert result == "https://zm2.test/zm/cgi-bin/nph-zms"
+
+    def test_unknown_server_falls_back_to_main(self):
+        c = _client()
+        raw = {"servers": [_server_raw(2, "Srv2", hostname="zm2.test")]}
+        with patch.object(c, "get_state", return_value=raw):
+            raw_monitor = {"Id": "1", "ServerId": "99"}
+            result = c.get_zms_url_for_monitor(raw_monitor)
+        assert result == c.get_zms_url()
+
+    def test_invalid_server_id_falls_back_to_main(self):
+        c = _client()
+        raw_monitor = {"Id": "1", "ServerId": "abc"}
+        assert c.get_zms_url_for_monitor(raw_monitor) == c.get_zms_url()
+
+    def test_lazy_caching(self):
+        """_ensure_servers should only fetch once."""
+        c = _client()
+        raw = {"servers": [_server_raw(2, "Srv2", hostname="zm2.test")]}
+        with patch.object(c, "get_state", return_value=raw) as mock_get:
+            c.get_zms_url_for_monitor({"Id": "1", "ServerId": "2"})
+            c.get_zms_url_for_monitor({"Id": "2", "ServerId": "2"})
+        # get_state should have been called once (lazy cache)
+        mock_get.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Multi-server PTZ routing
+# ---------------------------------------------------------------------------
+
+
+class TestMultiServerPtzRouting:
+    def test_server_id_zero_returns_main_url(self):
+        c = _client()
+        raw_monitor = {"Id": "1", "ServerId": "0"}
+        assert c.get_server_url_for_monitor(raw_monitor) == c._server_url
+
+    def test_known_server_returns_server_base_url(self):
+        c = _client()
+        raw = {"servers": [_server_raw(2, "Srv2", hostname="zm2.test", protocol="https")]}
+        with patch.object(c, "get_state", return_value=raw):
+            raw_monitor = {"Id": "1", "ServerId": "2"}
+            result = c.get_server_url_for_monitor(raw_monitor)
+        assert result == "https://zm2.test/zm/"
+
+    @patch("zoneminder.monitor.post")
+    def test_move_monitor_uses_server_url(self, mock_post):
+        """move_monitor should resolve the per-server URL for PTZ."""
+        mock_post.return_value.ok = True
+        c = _client()
+        c._auth_token = "tok"
+        raw = {"servers": [_server_raw(2, "Srv2", hostname="zm2.test", protocol="https")]}
+        with patch.object(c, "get_state", return_value=raw):
+            mon = Monitor(c, _monitor_raw(controllable="1", server_id="2"))
+            c.move_monitor(mon, "right")
+        call_kwargs = mock_post.call_args
+        assert call_kwargs.kwargs["url"] == "https://zm2.test/zm/index.php"
