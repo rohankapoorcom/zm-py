@@ -332,6 +332,20 @@ class TestRetryExhaustion:
 
         assert result == {}
 
+    @patch("zoneminder.zm.requests.request")
+    def test_no_wasted_login_on_last_attempt(self, mock_request):
+        """login() should not be called after the final failed attempt."""
+        c = _client()
+
+        resp_fail = MagicMock(ok=False, status_code=401)
+        mock_request.return_value = resp_fail
+
+        with patch.object(c, "login") as mock_login:
+            c._zm_request("get", "api/monitors.json")
+
+        # LOGIN_RETRIES=2: login called once (after 1st fail), not after 2nd
+        assert mock_login.call_count == 1
+
 
 class TestLoginConnectionError:
     """Verify login() returns False on ConnectionError instead of crashing."""

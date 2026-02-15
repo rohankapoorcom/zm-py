@@ -126,7 +126,7 @@ class ZoneMinder:
         try:
             # Since the API uses sessions that expire, sometimes we need to
             # re-auth if the call fails.
-            for _ in range(ZoneMinder.LOGIN_RETRIES):
+            for attempt in range(ZoneMinder.LOGIN_RETRIES):
                 token_url_suffix = ""
                 if self._auth_token:
                     token_url_suffix = "?token=" + self._auth_token
@@ -140,10 +140,10 @@ class ZoneMinder:
                     verify=self._verify_ssl,
                 )
 
-                if not req.ok:
-                    self.login()
-                else:
+                if req.ok:
                     break
+                if attempt < ZoneMinder.LOGIN_RETRIES - 1:
+                    self.login()
 
             else:
                 _LOGGER.error("Unable to get API response from ZoneMinder")
