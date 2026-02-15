@@ -25,8 +25,10 @@ class RunState:
     @property
     def active(self) -> bool:
         """Indicate if this RunState is currently active."""
-        states = self._client.get_state(self._state_url)["states"]
-        for state in states:
+        response = self._client.get_state(self._state_url)
+        if not response or "states" not in response:
+            return False
+        for state in response["states"]:
             state = state["State"]
             if int(state["Id"]) == self._state_id:
                 # yes, the ZM API uses the *string* "1" for this...

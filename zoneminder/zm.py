@@ -186,6 +186,10 @@ class ZoneMinder:
             _LOGGER.warning("Could not fetch runstates from ZoneMinder")
             return []
 
+        if "states" not in raw_states:
+            _LOGGER.warning("Could not parse list of runstates from ZoneMinder")
+            return []
+
         run_states = []
         for i in raw_states["states"]:
             raw_state = i["State"]

@@ -204,6 +204,12 @@ class TestMonitorIsRecording:
         mon = Monitor(client, _make_raw())
         assert mon.is_recording is True
 
+    def test_alarm_status_none(self):
+        """None status (missing key) should return False, not crash."""
+        client = StubClient(get_state_return={"other": "data"})
+        mon = Monitor(client, _make_raw())
+        assert mon.is_recording is False
+
 
 # ---------------------------------------------------------------------------
 # is_available

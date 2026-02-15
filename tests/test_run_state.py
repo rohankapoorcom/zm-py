@@ -102,6 +102,18 @@ class TestRunStateActive:
         rs = RunState(client, {"Id": "99", "Name": "Missing"})
         assert rs.active is False
 
+    def test_false_when_api_returns_empty(self):
+        """Empty API response should return False, not crash."""
+        client = StubClient(states_response={})
+        rs = RunState(client, {"Id": "1", "Name": "Default"})
+        assert rs.active is False
+
+    def test_false_when_api_returns_no_states_key(self):
+        """Response without 'states' key should return False, not crash."""
+        client = StubClient(states_response={"other": "data"})
+        rs = RunState(client, {"Id": "1", "Name": "Default"})
+        assert rs.active is False
+
     def test_multiple_states_picks_correct_one(self):
         resp = _states_response(
             (1, "Default", 0),

@@ -171,7 +171,7 @@ class Monitor:
         # cannot record right now
         try:
             return int(status) == STATE_ALARM
-        except ValueError:
+        except (ValueError, TypeError):
             return False
 
     @property

@@ -164,6 +164,11 @@ class TestGetRunStates:
         with patch.object(c, "get_state", return_value={}):
             assert c.get_run_states() == []
 
+    def test_no_states_key_returns_empty_list(self):
+        c = _client()
+        with patch.object(c, "get_state", return_value={"other": "data"}):
+            assert c.get_run_states() == []
+
 
 # ---------------------------------------------------------------------------
 # get_active_state
