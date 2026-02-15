@@ -6,7 +6,7 @@ from urllib.parse import quote, urljoin
 
 import requests
 
-from zoneminder.monitor import Monitor
+from zoneminder.monitor import Monitor, get_api_alarm_states
 from zoneminder.run_state import RunState
 from zoneminder.server import Server
 
@@ -40,6 +40,7 @@ class ZoneMinder:
         self._verify_ssl = verify_ssl
         self._cookies = None
         self._auth_token = None
+        self._zm_version: Optional[str] = None
         self._servers: Optional[dict[int, Server]] = None
 
     def login(self):
@@ -65,7 +66,9 @@ class ZoneMinder:
 
         if req.ok:
             try:
-                self._auth_token = req.json()["access_token"]
+                login_data = req.json()
+                self._auth_token = login_data["access_token"]
+                self._zm_version = login_data.get("version")
                 return True
             except KeyError:
                 # Try legacy auth below
@@ -110,6 +113,11 @@ class ZoneMinder:
         if not req.ok:
             _LOGGER.error("Connection error logging into ZoneMinder")
             return False
+
+        try:
+            self._zm_version = req.json().get("version")
+        except (ValueError, KeyError):
+            pass
 
         return True
 
@@ -339,6 +347,15 @@ class ZoneMinder:
             return int(result) == 1
         except (ValueError, TypeError):
             return False
+
+    @property
+    def zm_version(self) -> Optional[str]:
+        """Get the ZoneMinder server version string, e.g. '1.38.0'."""
+        return self._zm_version
+
+    def get_alarm_states(self) -> dict:
+        """Return the alarm state value table for this server's version."""
+        return get_api_alarm_states(self._zm_version)
 
     @property
     def verify_ssl(self) -> bool:

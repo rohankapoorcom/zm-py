@@ -11,7 +11,15 @@ from unittest.mock import patch
 import pytest
 
 from zoneminder.exceptions import ControlTypeError, MonitorControlTypeError
-from zoneminder.monitor import Monitor, MonitorState, TimePeriod
+from zoneminder.monitor import (
+    API_STATES_NO_OFFSET,
+    API_STATES_WITH_OFFSET,
+    Monitor,
+    MonitorState,
+    TimePeriod,
+    _parse_version,
+    get_api_alarm_states,
+)
 
 # ---------------------------------------------------------------------------
 # Stub client
@@ -21,11 +29,17 @@ from zoneminder.monitor import Monitor, MonitorState, TimePeriod
 class StubClient:
     """Minimal client stub for Monitor construction and method calls."""
 
-    def __init__(self, get_state_return=None, zms_url="http://zm.test/zm/cgi-bin/nph-zms"):
+    def __init__(
+        self,
+        get_state_return=None,
+        zms_url="http://zm.test/zm/cgi-bin/nph-zms",
+        zm_version="1.38.0",
+    ):
         self._zms_url = zms_url
         self._username = "admin"
         self._password = "secret"
         self._verify_ssl = False
+        self._zm_version = zm_version
         self._get_state_return = get_state_return or {}
         self._change_state_calls = []
 
@@ -48,6 +62,9 @@ class StubClient:
     def change_state(self, api_url, post_data):
         self._change_state_calls.append((api_url, post_data))
         return {}
+
+    def get_alarm_states(self):
+        return get_api_alarm_states(self._zm_version)
 
 
 def _make_raw(
@@ -174,15 +191,32 @@ class TestMonitorImageUrls:
 # ---------------------------------------------------------------------------
 
 class TestMonitorIsRecording:
+    """Test is_recording with version-aware alarm state values.
+
+    Default StubClient uses version 1.38.0 (with -1 offset), so ALARM=2.
+    """
+
     def test_alarm_status_true(self):
-        """Alarm status 3 (STATE_ALARM) means recording."""
+        """Alarm status 2 means recording on ZM >= 1.36.26."""
+        client = StubClient(get_state_return={"status": 2})
+        mon = Monitor(client, _make_raw())
+        assert mon.is_recording is True
+
+    def test_alert_status_also_recording(self):
+        """Alert status 3 also means recording (post-alarm frames)."""
         client = StubClient(get_state_return={"status": 3})
         mon = Monitor(client, _make_raw())
         assert mon.is_recording is True
 
-    def test_alarm_status_false(self):
-        """Alarm status 0 means not recording."""
+    def test_idle_status_false(self):
+        """Idle status 0 means not recording."""
         client = StubClient(get_state_return={"status": 0})
+        mon = Monitor(client, _make_raw())
+        assert mon.is_recording is False
+
+    def test_prealarm_status_false(self):
+        """Prealarm status 1 means not yet recording."""
+        client = StubClient(get_state_return={"status": 1})
         mon = Monitor(client, _make_raw())
         assert mon.is_recording is False
 
@@ -199,8 +233,8 @@ class TestMonitorIsRecording:
         assert mon.is_recording is None
 
     def test_alarm_status_int_cast(self):
-        """Status as string '3' should still match STATE_ALARM."""
-        client = StubClient(get_state_return={"status": "3"})
+        """Status as string '2' should still match ALARM."""
+        client = StubClient(get_state_return={"status": "2"})
         mon = Monitor(client, _make_raw())
         assert mon.is_recording is True
 
@@ -209,6 +243,24 @@ class TestMonitorIsRecording:
         client = StubClient(get_state_return={"other": "data"})
         mon = Monitor(client, _make_raw())
         assert mon.is_recording is False
+
+    def test_no_offset_version_alarm_at_3(self):
+        """ZM 1.36.20 (no -1 hack) has ALARM=3."""
+        client = StubClient(get_state_return={"status": 3}, zm_version="1.36.20")
+        mon = Monitor(client, _make_raw())
+        assert mon.is_recording is True
+
+    def test_no_offset_version_2_not_recording(self):
+        """ZM 1.36.20 (no -1 hack): status 2 is PREALARM, not recording."""
+        client = StubClient(get_state_return={"status": 2}, zm_version="1.36.20")
+        mon = Monitor(client, _make_raw())
+        assert mon.is_recording is False
+
+    def test_unknown_version_uses_offset(self):
+        """Unknown version string defaults to the offset table."""
+        client = StubClient(get_state_return={"status": 2}, zm_version=None)
+        mon = Monitor(client, _make_raw())
+        assert mon.is_recording is True
 
 
 # ---------------------------------------------------------------------------
@@ -479,3 +531,93 @@ class TestMonitorMultiServerUrls:
         client = StubClient(zms_url="http://main.test/zm/cgi-bin/nph-zms")
         mon = Monitor(client, _make_raw(server_id="0"))
         assert mon.mjpeg_image_url.startswith("http://main.test/zm/cgi-bin/nph-zms?")
+
+
+# ---------------------------------------------------------------------------
+# Version parsing and alarm state table selection
+# ---------------------------------------------------------------------------
+
+
+class TestParseVersion:
+    def test_standard_version(self):
+        assert _parse_version("1.36.26") == (1, 36, 26)
+
+    def test_two_part_version(self):
+        assert _parse_version("1.38") == (1, 38)
+
+    def test_four_part_version(self):
+        assert _parse_version("1.36.26.1") == (1, 36, 26, 1)
+
+    def test_none_returns_none(self):
+        assert _parse_version(None) is None
+
+    def test_empty_string_returns_none(self):
+        assert _parse_version("") is None
+
+    def test_garbage_returns_none(self):
+        assert _parse_version("not-a-version") is None
+
+
+class TestGetApiAlarmStates:
+    """Verify the version-to-state-table mapping."""
+
+    def test_pre_1_36_16_uses_offset(self):
+        """Versions before 1.36.16 had UNKNOWN=-1 in C++ enum, so ALARM=2."""
+        states = get_api_alarm_states("1.36.0")
+        assert states["ALARM"] == 2
+
+    def test_1_36_15_uses_offset(self):
+        states = get_api_alarm_states("1.36.15")
+        assert states["ALARM"] == 2
+
+    def test_1_36_16_no_offset(self):
+        """1.36.16 shifted UNKNOWN to 0 but no -1 hack yet, so ALARM=3."""
+        states = get_api_alarm_states("1.36.16")
+        assert states["ALARM"] == 3
+
+    def test_1_36_20_no_offset(self):
+        states = get_api_alarm_states("1.36.20")
+        assert states["ALARM"] == 3
+
+    def test_1_36_25_no_offset(self):
+        """Last version without the -1 hack."""
+        states = get_api_alarm_states("1.36.25")
+        assert states["ALARM"] == 3
+
+    def test_1_36_26_uses_offset(self):
+        """1.36.26 introduced the -1 hack, so ALARM=2 again."""
+        states = get_api_alarm_states("1.36.26")
+        assert states["ALARM"] == 2
+
+    def test_1_36_33_uses_offset(self):
+        states = get_api_alarm_states("1.36.33")
+        assert states["ALARM"] == 2
+
+    def test_1_36_two_part_uses_offset(self):
+        """'1.36' (no patch) is effectively 1.36.0, before the no-offset window."""
+        states = get_api_alarm_states("1.36")
+        assert states["ALARM"] == 2
+
+    def test_1_37_uses_offset(self):
+        states = get_api_alarm_states("1.37.61")
+        assert states["ALARM"] == 2
+
+    def test_1_38_uses_offset(self):
+        states = get_api_alarm_states("1.38.0")
+        assert states["ALARM"] == 2
+
+    def test_none_version_defaults_to_offset(self):
+        """Unknown version falls back to the offset table (most common)."""
+        states = get_api_alarm_states(None)
+        assert states["ALARM"] == 2
+
+    def test_all_states_present(self):
+        """Both tables should contain all 5 state keys."""
+        expected_keys = {"UNKNOWN", "IDLE", "PREALARM", "ALARM", "ALERT"}
+        assert set(API_STATES_WITH_OFFSET.keys()) == expected_keys
+        assert set(API_STATES_NO_OFFSET.keys()) == expected_keys
+
+    def test_tables_differ_by_one(self):
+        """The offset table values should each be 1 less than the no-offset table."""
+        for key in API_STATES_WITH_OFFSET:
+            assert API_STATES_WITH_OFFSET[key] == API_STATES_NO_OFFSET[key] - 1

@@ -12,8 +12,62 @@ from .exceptions import ControlTypeError, MonitorControlTypeError
 
 _LOGGER = logging.getLogger(__name__)
 
-# From ZoneMinder's web/includes/config.php.in
-STATE_ALARM = 3
+# Alarm state values as returned by the ZM API alarm status endpoint.
+#
+# The API endpoint /api/monitors/alarm/id:{id}/command:status.json shells out
+# to `zmu -s` and returns the numeric state from the C++ Monitor::State enum.
+# However, in ZM 1.36.26 a backwards-compatibility hack was added that
+# subtracts 1 from the value before returning it (MonitorsController.php).
+# This hack was never removed even though the C++ enum was later reverted.
+#
+# See: docs/api/state-alarm-analysis.md
+# Tracking: https://github.com/rohankapoorcom/zm-py/issues/60
+#
+# Version ranges and their API return values for alarm status:
+#   < 1.36.16  : C++ enum had UNKNOWN=-1, so ALARM=2.  No API offset.
+#   1.36.16-25 : C++ enum shifted UNKNOWN=0, so ALARM=3. No API offset.
+#   >= 1.36.26 : C++ enum has ALARM=3, but API subtracts 1, so returns 2.
+
+# API alarm status values for most ZM versions (< 1.36.16 and >= 1.36.26).
+# Before 1.36.16: C++ enum had UNKNOWN=-1, giving these values natively.
+# From 1.36.26+: C++ enum has UNKNOWN=0, but the API subtracts 1 (hack).
+API_STATES_WITH_OFFSET = {
+    "UNKNOWN": -1,
+    "IDLE": 0,
+    "PREALARM": 1,
+    "ALARM": 2,
+    "ALERT": 3,
+}
+
+# API alarm status values for ZM 1.36.16 through 1.36.25 (no -1 hack)
+API_STATES_NO_OFFSET = {
+    "UNKNOWN": 0,
+    "IDLE": 1,
+    "PREALARM": 2,
+    "ALARM": 3,
+    "ALERT": 4,
+}
+
+
+def _parse_version(version_string):
+    """Parse a ZM version string like '1.36.26' into a comparable tuple."""
+    try:
+        return tuple(int(x) for x in version_string.split("."))
+    except (ValueError, AttributeError):
+        return None
+
+
+def get_api_alarm_states(zm_version):
+    """Return the correct alarm state table for the given ZM version string.
+
+    The API alarm status endpoint returns different numeric values depending
+    on whether MonitorsController applies a -1 offset. Only ZM 1.36.16
+    through 1.36.25 lack this offset.
+    """
+    parsed = _parse_version(zm_version)
+    if parsed and (1, 36, 16) <= parsed <= (1, 36, 25):
+        return API_STATES_NO_OFFSET
+    return API_STATES_WITH_OFFSET
 
 
 class ControlType(Enum):
@@ -171,7 +225,8 @@ class Monitor:
         # ZoneMinder API returns an empty string to indicate that this monitor
         # cannot record right now
         try:
-            return int(status) == STATE_ALARM
+            states = self._client.get_alarm_states()
+            return int(status) >= states["ALARM"]
         except (ValueError, TypeError):
             return False
 
