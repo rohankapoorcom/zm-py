@@ -146,7 +146,7 @@ class Monitor:
         """Create a new Monitor."""
         self._client = client
         self._raw_result = raw_result
-        self._last_update = 0.0
+        self._last_update = time.monotonic()
         raw_monitor = raw_result["Monitor"]
         self._monitor_id = int(raw_monitor["Id"])
         self._monitor_url = f"api/monitors/{self._monitor_id}.json"

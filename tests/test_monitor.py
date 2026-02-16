@@ -365,16 +365,11 @@ class TestMonitorGetEvents:
 
 class TestMonitorFunction:
     def test_getter_returns_monitor_state(self):
-        """function getter calls update_monitor() then reads Function."""
-        get_return = {
-            "monitor": {
-                "Monitor": {"Function": "Modect"},
-                "Monitor_Status": {"CaptureFPS": "10.00"},
-            }
-        }
-        client = StubClient(get_state_return=get_return)
-        mon = Monitor(client, _make_raw(function="Monitor"))
+        """function getter reads Function from cached raw_result."""
+        client = StubClient()
+        mon = Monitor(client, _make_raw(function="Modect"))
         assert mon.function == MonitorState.MODECT
+        assert client._get_state_call_count == 0
 
     def test_setter_posts_new_function(self):
         client = StubClient()
@@ -400,6 +395,7 @@ class TestUpdateMonitor:
         }
         client = StubClient(get_state_return=updated)
         mon = Monitor(client, _make_raw())
+        mon._last_update = 0.0  # Expire cache to force fetch
         mon.update_monitor()
         assert mon._raw_result["Monitor"]["Function"] == "Mocord"
 
@@ -413,6 +409,7 @@ class TestUpdateMonitor:
         }
         client = StubClient(get_state_return=updated)
         mon = Monitor(client, _make_raw())
+        mon._last_update = 0.0  # Expire cache so first call fetches
         mon.update_monitor()
         mon.update_monitor()
         mon.update_monitor()
@@ -427,10 +424,11 @@ class TestUpdateMonitor:
                 "Monitor_Status": {"CaptureFPS": "15.00"},
             }
         }
+        mock_monotonic.return_value = 99.0  # Constructor time
         client = StubClient(get_state_return=updated)
         mon = Monitor(client, _make_raw())
 
-        mock_monotonic.return_value = 100.0
+        mock_monotonic.return_value = 100.0  # 1.0s after constructor → TTL expired
         mon.update_monitor()
         assert client._get_state_call_count == 1
 
@@ -455,16 +453,16 @@ class TestUpdateMonitor:
         client = StubClient(get_state_return=updated)
         mon = Monitor(client, _make_raw())
 
-        # First read fetches
+        # First read uses constructor cache (no fetch)
         _ = mon.function
-        assert client._get_state_call_count == 1
+        assert client._get_state_call_count == 0
 
-        # Set function (invalidates cache)
+        # Set function (invalidates cache by setting _last_update = 0.0)
         mon.function = MonitorState.RECORD
 
-        # Next read should re-fetch despite being within 1s
+        # Next read should re-fetch despite being within 1s of construction
         _ = mon.function
-        assert client._get_state_call_count == 2
+        assert client._get_state_call_count == 1
 
 
 # ---------------------------------------------------------------------------
