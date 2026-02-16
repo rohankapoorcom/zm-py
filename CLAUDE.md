@@ -15,7 +15,7 @@ tox
 
 ### Run only unit tests
 ```bash
-tox -e py313    # or py314
+tox -e py314
 ```
 
 ### Run a single test file or test
@@ -67,12 +67,12 @@ poetry install
 - Flake8 ignores: E501, W503, E203, D202, W504
 - Pylint ignores `tests/` directory
 - mypy strict mode (no `ignore_errors`)
-- Python 3.13 and 3.14 supported
+- Python 3.14+ supported
 
 ## Testing
 
 - **Unit tests** (`tests/test_*.py`): Use `StubClient` for isolation, no external dependencies. Run via `tox`.
 - **E2E tests** (`tests/e2e/`): Require live ZoneMinder server. **Not run by `tox`** — run directly via `pytest tests/e2e/`. Auto-skip when `ZM_HOST` is unset. Write tests gated behind `ZM_E2E_WRITE=1`.
-- CI runs unit tests on Python 3.13 and 3.14; linters/typing run only on 3.13 (results are version-independent).
+- CI runs unit tests, linters, and typing on Python 3.14.
 - **Always run `tox` and confirm it passes before offering to commit.** Do not commit with failing checks.
 - **Run `pytest tests/e2e/` locally before committing** to verify against a live ZoneMinder server.

@@ -16,7 +16,6 @@ classifiers= [
     'License :: OSI Approved :: Apache Software License',
     'Operating System :: OS Independent',
     'Programming Language :: Python',
-    'Programming Language :: Python :: 3.13',
     'Programming Language :: Python :: 3.14',
     'Topic :: Software Development :: Libraries :: Python Modules',
     'Topic :: Home Automation'
@@ -28,7 +27,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.13"
+python = "^3.14"
 requests = ">=2.32.2"
 
 [tool.black]
@@ -49,7 +48,7 @@ exclude = '''
 '''
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.14"
 follow_imports = "silent"
 ignore_missing_imports = true
 warn_incomplete_stub = true
