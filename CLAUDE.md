@@ -67,7 +67,7 @@ poetry install
 - Flake8 ignores: E501, W503, E203, D202, W504
 - Pylint ignores `tests/` directory
 - mypy strict mode (no `ignore_errors`)
-- Python 3.14+ supported
+- Python 3.13+ supported (3.14 is primary; 3.13 for legacy HA compatibility)
 
 ## Testing
 
