@@ -409,6 +409,23 @@ class TestUpdateMonitor:
         mon.update_monitor()
         assert mon._raw_result["Monitor"]["Function"] == "Mocord"
 
+    def test_empty_response_preserves_existing_data(self):
+        """Empty API response should log warning and keep stale data, not crash."""
+        client = StubClient(get_state_return={})
+        mon = Monitor(client, _make_raw(function="Modect"))
+        mon._last_update = 0.0  # Expire cache to force fetch
+        mon.update_monitor()
+        # Original data should be preserved
+        assert mon.function == MonitorState.MODECT
+
+    def test_missing_monitor_key_preserves_existing_data(self):
+        """Response without 'monitor' key should not crash."""
+        client = StubClient(get_state_return={"other": "data"})
+        mon = Monitor(client, _make_raw(function="Record"))
+        mon._last_update = 0.0
+        mon.update_monitor()
+        assert mon.function == MonitorState.RECORD
+
     def test_second_call_within_ttl_does_not_refetch(self):
         """Within 1s TTL, update_monitor should use cached data."""
         updated = {
@@ -546,6 +563,16 @@ class TestPtzControlCommand:
         import requests as _req
 
         mock_post.side_effect = _req.exceptions.ConnectionError("refused")
+        mon = Monitor(StubClient(), _make_raw(controllable="1"))
+        result = mon.ptz_control_command("right", "tok", "http://zm.test/zm/")
+        assert result is False
+
+    @patch("zoneminder.monitor.post")
+    def test_returns_false_on_timeout(self, mock_post):
+        """Timeout should return False, not crash."""
+        import requests as _req
+
+        mock_post.side_effect = _req.exceptions.Timeout("timed out")
         mon = Monitor(StubClient(), _make_raw(controllable="1"))
         result = mon.ptz_control_command("right", "tok", "http://zm.test/zm/")
         assert result is False

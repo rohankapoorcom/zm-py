@@ -10,6 +10,8 @@
 
 A lightweight Python API client for [ZoneMinder](https://www.zoneminder.org), built specifically for the [Home Assistant ZoneMinder integration](https://www.home-assistant.io/integrations/zoneminder/).
 
+The [official Home Assistant ZoneMinder component](https://github.com/home-assistant/core/tree/dev/homeassistant/components/zoneminder) depends on `zm-py==0.5.4`. Active development of the integration has moved to [nabbi/ha-zoneminder](https://github.com/nabbi/ha-zoneminder); it is unknown if or when those changes will be submitted back to HA core.
+
 ## Project Status
 
 **This project is in maintenance mode.** zm-py provides the limited set of ZoneMinder API interactions that Home Assistant needs (monitors, camera streaming, events, sensors, and switches). Bug fixes and compatibility updates are accepted; new feature development is not planned.

@@ -310,9 +310,8 @@ class TestStaleTokenRetry:
 
         assert result == {"result": 1}
         # Second call should have used new-token, not old-token
-        second_call_url = mock_request.call_args_list[1][1].get("url", mock_request.call_args_list[1][0][1])
-        assert "new-token" in second_call_url
-        assert "old-token" not in second_call_url
+        second_call_params = mock_request.call_args_list[1][1].get("params", {})
+        assert second_call_params == {"token": "new-token"}
 
 
 class TestRetryExhaustion:

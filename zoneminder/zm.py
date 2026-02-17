@@ -60,7 +60,7 @@ class ZoneMinder:
                 verify=self._verify_ssl,
                 timeout=ZoneMinder.DEFAULT_TIMEOUT,
             )
-        except requests.exceptions.ConnectionError:
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             _LOGGER.exception("Unable to connect to ZoneMinder during login")
             return False
 
@@ -90,7 +90,7 @@ class ZoneMinder:
                 verify=self._verify_ssl,
                 timeout=ZoneMinder.DEFAULT_TIMEOUT,
             )
-        except requests.exceptions.ConnectionError:
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             _LOGGER.exception("Unable to connect to ZoneMinder during legacy login")
             return False
 
@@ -106,7 +106,7 @@ class ZoneMinder:
                 timeout=ZoneMinder.DEFAULT_TIMEOUT,
                 verify=self._verify_ssl,
             )
-        except requests.exceptions.ConnectionError:
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             _LOGGER.exception("Unable to connect to ZoneMinder during legacy login verification")
             return False
 
@@ -135,13 +135,12 @@ class ZoneMinder:
             # Since the API uses sessions that expire, sometimes we need to
             # re-auth if the call fails.
             for attempt in range(ZoneMinder.LOGIN_RETRIES):
-                token_url_suffix = ""
-                if self._auth_token:
-                    token_url_suffix = "?token=" + self._auth_token
+                params = {"token": self._auth_token} if self._auth_token else None
 
                 req = requests.request(
                     method,
-                    urljoin(self._server_url, api_url) + token_url_suffix,
+                    urljoin(self._server_url, api_url),
+                    params=params,
                     data=data,
                     cookies=self._cookies,
                     timeout=timeout,
@@ -165,7 +164,7 @@ class ZoneMinder:
                     req.text,
                 )
                 return {}
-        except requests.exceptions.ConnectionError:
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             _LOGGER.exception("Unable to connect to ZoneMinder")
             return {}
 

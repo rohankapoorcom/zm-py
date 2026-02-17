@@ -186,6 +186,9 @@ class Monitor:
         if now - self._last_update < 1.0:
             return
         result = self._client.get_state(self._monitor_url)
+        if not result or "monitor" not in result:
+            _LOGGER.warning("Could not refresh monitor %s from API", self._monitor_id)
+            return
         self._raw_result = result["monitor"]
         self._last_update = now
 
@@ -321,7 +324,7 @@ class Monitor:
                 timeout=10,
                 verify=self._client.verify_ssl,
             )
-        except requests.exceptions.ConnectionError:
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             _LOGGER.exception("Unable to connect to ZoneMinder for PTZ control")
             return False
         return bool(req.ok)
