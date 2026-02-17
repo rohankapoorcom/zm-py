@@ -608,6 +608,88 @@ class TestMonitorFunctionZm137:
         assert mon._last_update == 0.0
 
 
+class TestMonitorCapturingAnalysingRecording:
+    """Test individual Capturing/Analysing/Recording properties (ZM 1.37+)."""
+
+    # --- Getters ---
+
+    def test_capturing_getter_returns_value(self):
+        mon = Monitor(StubClient(), _make_raw(capturing="Always"))
+        assert mon.capturing == "Always"
+
+    def test_analysing_getter_returns_value(self):
+        mon = Monitor(StubClient(), _make_raw(analysing="Always"))
+        assert mon.analysing == "Always"
+
+    def test_recording_getter_returns_value(self):
+        mon = Monitor(StubClient(), _make_raw(recording="OnMotion"))
+        assert mon.recording == "OnMotion"
+
+    def test_capturing_getter_returns_none_when_absent(self):
+        mon = Monitor(StubClient(), _make_raw())
+        assert mon.capturing is None
+
+    def test_analysing_getter_returns_none_when_absent(self):
+        mon = Monitor(StubClient(), _make_raw())
+        assert mon.analysing is None
+
+    def test_recording_getter_returns_none_when_absent(self):
+        mon = Monitor(StubClient(), _make_raw())
+        assert mon.recording is None
+
+    def test_capturing_getter_none_value(self):
+        """Capturing="None" (string) should be returned, not Python None."""
+        mon = Monitor(StubClient(), _make_raw(capturing="None"))
+        assert mon.capturing == "None"
+
+    # --- Setters ---
+
+    def test_capturing_setter_posts_correct_field(self):
+        client = StubClient()
+        mon = Monitor(client, _make_raw())
+        mon.capturing = "Ondemand"
+        assert len(client._change_state_calls) == 1
+        url, data = client._change_state_calls[0]
+        assert "monitors/1.json" in url
+        assert data == {"Monitor[Capturing]": "Ondemand"}
+
+    def test_analysing_setter_posts_correct_field(self):
+        client = StubClient()
+        mon = Monitor(client, _make_raw())
+        mon.analysing = "Always"
+        assert len(client._change_state_calls) == 1
+        url, data = client._change_state_calls[0]
+        assert "monitors/1.json" in url
+        assert data == {"Monitor[Analysing]": "Always"}
+
+    def test_recording_setter_posts_correct_field(self):
+        client = StubClient()
+        mon = Monitor(client, _make_raw())
+        mon.recording = "OnMotion"
+        assert len(client._change_state_calls) == 1
+        url, data = client._change_state_calls[0]
+        assert "monitors/1.json" in url
+        assert data == {"Monitor[Recording]": "OnMotion"}
+
+    def test_capturing_setter_invalidates_cache(self):
+        client = StubClient()
+        mon = Monitor(client, _make_raw())
+        mon.capturing = "Always"
+        assert mon._last_update == 0.0
+
+    def test_analysing_setter_invalidates_cache(self):
+        client = StubClient()
+        mon = Monitor(client, _make_raw())
+        mon.analysing = "None"
+        assert mon._last_update == 0.0
+
+    def test_recording_setter_invalidates_cache(self):
+        client = StubClient()
+        mon = Monitor(client, _make_raw())
+        mon.recording = "Always"
+        assert mon._last_update == 0.0
+
+
 class TestDeriveFunction:
     """Test the _derive_function helper directly."""
 

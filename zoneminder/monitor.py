@@ -293,6 +293,48 @@ class Monitor:
         self._last_update = 0.0
 
     @property
+    def capturing(self) -> str | None:
+        """Get the Capturing field (ZM 1.37+).
+
+        Returns None on pre-1.37 ZM where the field is absent.
+        """
+        return self._raw_result["Monitor"].get("Capturing")
+
+    @capturing.setter
+    def capturing(self, value: str) -> None:
+        """Set the Capturing field (ZM 1.37+)."""
+        self._client.change_state(self._monitor_url, {"Monitor[Capturing]": value})
+        self._last_update = 0.0
+
+    @property
+    def analysing(self) -> str | None:
+        """Get the Analysing field (ZM 1.37+).
+
+        Returns None on pre-1.37 ZM where the field is absent.
+        """
+        return self._raw_result["Monitor"].get("Analysing")
+
+    @analysing.setter
+    def analysing(self, value: str) -> None:
+        """Set the Analysing field (ZM 1.37+)."""
+        self._client.change_state(self._monitor_url, {"Monitor[Analysing]": value})
+        self._last_update = 0.0
+
+    @property
+    def recording(self) -> str | None:
+        """Get the Recording field (ZM 1.37+).
+
+        Returns None on pre-1.37 ZM where the field is absent.
+        """
+        return self._raw_result["Monitor"].get("Recording")
+
+    @recording.setter
+    def recording(self, value: str) -> None:
+        """Set the Recording field (ZM 1.37+)."""
+        self._client.change_state(self._monitor_url, {"Monitor[Recording]": value})
+        self._last_update = 0.0
+
+    @property
     def controllable(self) -> bool:
         """Indicate whether this Monitor is movable."""
         return self._controllable

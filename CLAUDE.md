@@ -76,3 +76,4 @@ poetry install
 - CI runs unit tests, linters, and typing on Python 3.14.
 - **Always run `tox` and confirm it passes before offering to commit.** Do not commit with failing checks.
 - **Run `pytest tests/e2e/` locally before committing** to verify against a live ZoneMinder server.
+- **After adding new dependencies to `requirements-test.txt`**, touch `tox.ini` so tox recreates its virtualenvs (`touch tox.ini`).
