@@ -51,6 +51,11 @@ class ZoneMinder:
     def login(self) -> bool:
         """Login to the ZoneMinder API."""
         _LOGGER.debug("Attempting to login to ZoneMinder")
+        # Clear any stale token before re-auth.  If JWT auth fails and we
+        # fall back to legacy session cookies, a leftover token would be
+        # sent as ?token=… on every subsequent request, causing ZM to reject
+        # the stale JWT with 401 even though the session cookie is valid.
+        self._auth_token = None
 
         login_post = {}
         if self._username:
@@ -152,7 +157,14 @@ class ZoneMinder:
                 if req.ok:
                     break
                 if attempt < ZoneMinder.LOGIN_RETRIES - 1:
-                    self.login()
+                    _LOGGER.debug(
+                        "API call %s %s returned HTTP %s, re-authenticating",
+                        method.upper(),
+                        api_url,
+                        req.status_code,
+                    )
+                    login_ok = self.login()
+                    _LOGGER.debug("Re-login succeeded: %s", login_ok)
 
             else:
                 _LOGGER.error(
