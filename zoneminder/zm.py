@@ -155,7 +155,12 @@ class ZoneMinder:
                     self.login()
 
             else:
-                _LOGGER.error("Unable to get API response from ZoneMinder")
+                _LOGGER.error(
+                    "Unable to get API response from ZoneMinder: %s %s → HTTP %s",
+                    method.upper(),
+                    api_url,
+                    req.status_code,
+                )
                 return {}
 
             try:
