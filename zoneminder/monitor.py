@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import Enum
 import logging
 import time
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import requests
 
@@ -84,7 +84,7 @@ class ControlType(Enum):
     DOWN_RIGHT = "moveConDownRight"
 
     @classmethod
-    def from_move(cls, move) -> Enum:
+    def from_move(cls, move: str) -> ControlType:
         """Get the corresponding direction from the move.
 
         Example values: 'right', 'UP-RIGHT', 'down', 'down-left', or 'up_left'.
@@ -112,13 +112,11 @@ class TimePeriod(Enum):
     @property
     def period(self) -> str:
         """Get the period of time."""
-        # pylint: disable=unsubscriptable-object
         return self.value[0]
 
     @property
     def title(self) -> str:
         """Explains what is measured in this period."""
-        # pylint: disable=unsubscriptable-object
         return self.value[1]
 
     @staticmethod
@@ -263,11 +261,11 @@ class Monitor:
         Specifically only gets events that have occurred within the TimePeriod
         provided.
         """
-        date_filter = f"1%20{time_period.period}"
+        date_filter = quote(f"1 {time_period.period}")
         if time_period == TimePeriod.ALL:
             # The consoleEvents API uses DATE_SUB, so give it
             # something large
-            date_filter = "100%20year"
+            date_filter = quote("100 year")
 
         archived_filter = "/Archived=:0"
         if include_archived:
@@ -306,7 +304,7 @@ class Monitor:
 
         ptz_url = f"{base_url}index.php"
 
-        params = {
+        params: dict[str, str | int] = {
             "view": "request",
             "request": "control",
             "id": self.id,
