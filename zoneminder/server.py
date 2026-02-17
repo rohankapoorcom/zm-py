@@ -14,6 +14,8 @@ class Server:
         self._path_to_zms = raw_server.get("PathToZMS", "/zm/cgi-bin/nph-zms")
         self._path_to_index = raw_server.get("PathToIndex", "/zm/index.php")
         self._status = raw_server.get("Status", "")
+        self._zms_url = self._build_zms_url()
+        self._base_url = self._build_base_url()
         self._fmt = "{}(id={}, name={}, hostname={})"
 
     def __repr__(self) -> str:
@@ -67,6 +69,15 @@ class Server:
 
     @property
     def zms_url(self) -> str:
+        """Get the full ZMS URL for this server."""
+        return self._zms_url
+
+    @property
+    def base_url(self) -> str:
+        """Get the base URL for this server."""
+        return self._base_url
+
+    def _build_zms_url(self) -> str:
         """Build the full ZMS URL for this server.
 
         Format: {protocol}://{hostname}[:{port}]{path_to_zms}
@@ -77,8 +88,7 @@ class Server:
             host = f"{host}:{self._port}"
         return f"{self._protocol}://{host}{self._path_to_zms}"
 
-    @property
-    def base_url(self) -> str:
+    def _build_base_url(self) -> str:
         """Build the base URL for this server from PathToIndex.
 
         Returns the directory portion of PathToIndex with a trailing slash,

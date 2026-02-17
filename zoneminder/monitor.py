@@ -119,16 +119,25 @@ class TimePeriod(Enum):
         """Explains what is measured in this period."""
         return self.value[1]
 
-    @staticmethod
-    def get_time_period(value):
+    @classmethod
+    def get_time_period(cls, value):
         """Get the corresponding TimePeriod from the value.
 
         Example values: 'all', 'hour', 'day', 'week', or 'month'.
         """
-        for time_period in TimePeriod:
-            if time_period.period == value:
-                return time_period
-        raise ValueError(f"{value} is not a valid TimePeriod")
+        try:
+            return cls._period_map()[value]
+        except KeyError:
+            raise ValueError(f"{value} is not a valid TimePeriod") from None
+
+    @classmethod
+    def _period_map(cls) -> dict[str, TimePeriod]:
+        """Lazily build and cache a {period_string: TimePeriod} lookup."""
+        try:
+            return cls.__period_map  # type: ignore[attr-defined]
+        except AttributeError:
+            cls.__period_map = {tp.period: tp for tp in cls}  # type: ignore[attr-defined]
+            return cls.__period_map  # type: ignore[attr-defined]
 
     ALL = ("all", "Events")
     HOUR = ("hour", "Events Last Hour")

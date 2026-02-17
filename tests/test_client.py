@@ -586,3 +586,38 @@ class TestGetEventCounts:
 
         with patch.object(c, "get_state", return_value={"results": []}):
             assert c.get_event_counts(TimePeriod.ALL) == {}
+
+
+# ---------------------------------------------------------------------------
+# get_alarm_states caching
+# ---------------------------------------------------------------------------
+
+
+class TestGetAlarmStatesCaching:
+    def test_cached_after_login(self):
+        """After login populates _alarm_states, get_alarm_states uses cached value."""
+        c = _client()
+        c._zm_version = "1.38.0"
+        from zoneminder.monitor import get_api_alarm_states
+
+        expected = get_api_alarm_states("1.38.0")
+        c._alarm_states = expected
+        # Should return cached value without re-computing
+        assert c.get_alarm_states() is expected
+
+    def test_lazy_init_when_no_login(self):
+        """If login was never called, get_alarm_states still works via lazy init."""
+        c = _client()
+        c._zm_version = "1.36.20"
+        assert c._alarm_states is None
+        states = c.get_alarm_states()
+        assert states["ALARM"] == 3  # no-offset version
+        assert c._alarm_states is states  # Now cached
+
+    def test_does_not_recompute_on_repeated_calls(self):
+        """Multiple calls should return the same cached dict object."""
+        c = _client()
+        c._zm_version = "1.38.0"
+        s1 = c.get_alarm_states()
+        s2 = c.get_alarm_states()
+        assert s1 is s2

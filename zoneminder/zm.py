@@ -44,6 +44,7 @@ class ZoneMinder:
         self._session.verify = verify_ssl
         self._auth_token: str | None = None
         self._zm_version: str | None = None
+        self._alarm_states: dict | None = None
         self._servers: dict[int, Server] | None = None
         self._event_cache: dict[tuple, tuple[float, dict | None]] = {}
 
@@ -72,6 +73,7 @@ class ZoneMinder:
                 login_data = req.json()
                 self._auth_token = login_data["access_token"]
                 self._zm_version = login_data.get("version")
+                self._alarm_states = get_api_alarm_states(self._zm_version)
                 return True
             except KeyError:
                 # Try legacy auth below
@@ -119,6 +121,7 @@ class ZoneMinder:
         except (ValueError, KeyError):
             pass
 
+        self._alarm_states = get_api_alarm_states(self._zm_version)
         return True
 
     def get_state(self, api_url) -> dict:
@@ -134,12 +137,13 @@ class ZoneMinder:
         try:
             # Since the API uses sessions that expire, sometimes we need to
             # re-auth if the call fails.
+            url = urljoin(self._server_url, api_url)
             for attempt in range(ZoneMinder.LOGIN_RETRIES):
                 params = {"token": self._auth_token} if self._auth_token else None
 
                 req = self._session.request(
                     method,
-                    urljoin(self._server_url, api_url),
+                    url,
                     params=params,
                     data=data,
                     timeout=timeout,
@@ -392,7 +396,9 @@ class ZoneMinder:
 
     def get_alarm_states(self) -> dict:
         """Return the alarm state value table for this server's version."""
-        return get_api_alarm_states(self._zm_version)
+        if self._alarm_states is None:
+            self._alarm_states = get_api_alarm_states(self._zm_version)
+        return self._alarm_states
 
     @property
     def verify_ssl(self) -> bool:
