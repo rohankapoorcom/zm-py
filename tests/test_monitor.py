@@ -6,7 +6,7 @@ using a stub client -- no live ZoneMinder server needed.
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -43,6 +43,7 @@ class StubClient:
         self._get_state_return = get_state_return or {}
         self._get_state_call_count = 0
         self._change_state_calls = []
+        self._session = MagicMock()
 
     @property
     def verify_ssl(self):
@@ -67,6 +68,17 @@ class StubClient:
 
     def get_alarm_states(self):
         return get_api_alarm_states(self._zm_version)
+
+    def get_event_counts(self, time_period, include_archived=False):
+        """Match the ZoneMinder client's event-count interface."""
+        resp = self._get_state_return
+        try:
+            result = resp["results"]
+            if isinstance(result, list):
+                return {}
+            return result
+        except (TypeError, KeyError):
+            return None
 
 
 def _make_raw(
@@ -271,31 +283,71 @@ class TestMonitorIsRecording:
 
 class TestMonitorIsAvailable:
     def _make_available_monitor(self, daemon_status, capture_fps="10.00", has_monitor_status=True):
-        """Build a monitor for is_available tests."""
-        client = StubClient(get_state_return=daemon_status)
+        """Build a monitor for is_available tests.
+
+        Uses a multi-response client: first call returns daemon_status,
+        second call (update_monitor) returns monitor data with the FPS.
+        """
+        responses = []
+        responses.append(daemon_status)
+        if has_monitor_status:
+            responses.append({
+                "monitor": {
+                    "Monitor": {
+                        "Id": "1", "Name": "Front Door", "Controllable": "0",
+                        "Function": "Monitor", "StreamReplayBuffer": "0", "ServerId": "0",
+                    },
+                    "Monitor_Status": {"CaptureFPS": capture_fps},
+                }
+            })
+        else:
+            responses.append({
+                "monitor": {
+                    "Monitor": {
+                        "Id": "1", "Name": "Front Door", "Controllable": "0",
+                        "Function": "Monitor", "StreamReplayBuffer": "0", "ServerId": "0",
+                    },
+                }
+            })
+
+        client = StubClient()
+        call_idx = 0
+
+        def multi_get_state(api_url):
+            nonlocal call_idx
+            client._get_state_call_count += 1
+            if call_idx < len(responses):
+                resp = responses[call_idx]
+                call_idx += 1
+                return resp
+            return {}
+
+        client.get_state = multi_get_state
+
         raw = _make_raw()
         if has_monitor_status:
             raw["Monitor_Status"] = {"CaptureFPS": capture_fps}
         else:
             del raw["Monitor_Status"]
         mon = Monitor(client, raw)
-        return mon
+        mon._last_update = 0.0  # Expire TTL to allow update_monitor to fetch
+        return mon, client
 
     def test_available_when_daemon_running_and_fps_nonzero(self):
-        mon = self._make_available_monitor({"status": True}, capture_fps="10.00")
+        mon, _ = self._make_available_monitor({"status": True}, capture_fps="10.00")
         assert mon.is_available is True
 
     def test_unavailable_when_daemon_not_running(self):
-        mon = self._make_available_monitor({"status": False}, capture_fps="10.00")
+        mon, _ = self._make_available_monitor({"status": False}, capture_fps="10.00")
         assert mon.is_available is False
 
     def test_unavailable_when_fps_zero(self):
-        mon = self._make_available_monitor({"status": True}, capture_fps="0.00")
+        mon, _ = self._make_available_monitor({"status": True}, capture_fps="0.00")
         assert mon.is_available is False
 
     def test_unavailable_when_no_monitor_status(self):
         """Without Monitor_Status, should be unavailable."""
-        mon = self._make_available_monitor({"status": True}, has_monitor_status=False)
+        mon, _ = self._make_available_monitor({"status": True}, has_monitor_status=False)
         assert mon.is_available is False
 
     def test_unavailable_when_no_response(self):
@@ -303,18 +355,11 @@ class TestMonitorIsAvailable:
         mon = Monitor(client, _make_raw())
         assert mon.is_available is False
 
-    def test_reads_from_cached_raw_result(self):
-        """BUG-04: is_available reads Monitor_Status from _raw_result without refetching.
-
-        Exactly 1 API call should be made (daemon status only), even with expired TTL.
-        """
-        client = StubClient(get_state_return={"status": True})
-        raw = _make_raw()
-        raw["Monitor_Status"] = {"CaptureFPS": "15.00"}
-        mon = Monitor(client, raw)
-        mon._last_update = 0.0  # Expire the TTL cache
+    def test_refreshes_monitor_data(self):
+        """is_available should call update_monitor to get fresh FPS data."""
+        mon, client = self._make_available_monitor({"status": True}, capture_fps="15.00")
         assert mon.is_available is True
-        assert client._get_state_call_count == 1  # daemon status only
+        assert client._get_state_call_count == 2  # daemon status + update_monitor
 
 
 # ---------------------------------------------------------------------------
@@ -455,7 +500,7 @@ class TestUpdateMonitor:
         client = StubClient(get_state_return=updated)
         mon = Monitor(client, _make_raw())
 
-        mock_monotonic.return_value = 100.0  # 1.0s after constructor → TTL expired
+        mock_monotonic.return_value = 100.0  # 1.0s after constructor -> TTL expired
         mon.update_monitor()
         assert client._get_state_call_count == 1
 
@@ -495,7 +540,7 @@ class TestUpdateMonitor:
 # ---------------------------------------------------------------------------
 
 class TestPtzControlCommand:
-    """PTZ tests using mocked requests.post -- no live server needed."""
+    """PTZ tests using mocked session -- no live server needed."""
 
     def test_raises_on_non_controllable(self):
         mon = Monitor(StubClient(), _make_raw(controllable="0"))
@@ -507,93 +552,90 @@ class TestPtzControlCommand:
         with pytest.raises(ControlTypeError):
             mon.ptz_control_command("invalid-dir", "fake-token", "http://zm.test/zm/")
 
-    @patch("zoneminder.monitor.requests.post")
-    def test_sends_post_request(self, mock_post):
-        mock_post.return_value.ok = True
-        mon = Monitor(StubClient(), _make_raw(controllable="1"))
+    def test_sends_post_request(self):
+        client = StubClient()
+        client._session.post.return_value = MagicMock(ok=True)
+        mon = Monitor(client, _make_raw(controllable="1"))
         result = mon.ptz_control_command("right", "test-token", "http://zm.test/zm/")
         assert result is True
-        mock_post.assert_called_once()
-        call_kwargs = mock_post.call_args
+        client._session.post.assert_called_once()
+        call_kwargs = client._session.post.call_args
         assert call_kwargs.kwargs["url"] == "http://zm.test/zm/index.php"
 
-    @patch("zoneminder.monitor.requests.post")
-    def test_params_contain_control_value(self, mock_post):
-        mock_post.return_value.ok = True
-        mon = Monitor(StubClient(), _make_raw(controllable="1"))
+    def test_params_contain_control_value(self):
+        client = StubClient()
+        client._session.post.return_value = MagicMock(ok=True)
+        mon = Monitor(client, _make_raw(controllable="1"))
         mon.ptz_control_command("up", "tok", "http://zm.test/zm/")
-        params = mock_post.call_args.kwargs["params"]
+        params = client._session.post.call_args.kwargs["params"]
         assert params["control"] == "moveConUp"
         assert params["id"] == 1
         assert params["token"] == "tok"
         assert params["view"] == "request"
         assert params["request"] == "control"
 
-    @patch("zoneminder.monitor.requests.post")
-    def test_all_directions(self, mock_post):
+    def test_all_directions(self):
         """All 8 directions should succeed."""
-        mock_post.return_value.ok = True
-        mon = Monitor(StubClient(), _make_raw(controllable="1"))
+        client = StubClient()
+        client._session.post.return_value = MagicMock(ok=True)
+        mon = Monitor(client, _make_raw(controllable="1"))
         for direction in ("right", "left", "up", "down",
                           "up-left", "up-right", "down-left", "down-right"):
             result = mon.ptz_control_command(direction, "tok", "http://zm.test/zm/")
             assert result is True
 
-    @patch("zoneminder.monitor.requests.post")
-    def test_returns_false_on_http_error(self, mock_post):
-        mock_post.return_value.ok = False
-        mon = Monitor(StubClient(), _make_raw(controllable="1"))
+    def test_returns_false_on_http_error(self):
+        client = StubClient()
+        client._session.post.return_value = MagicMock(ok=False)
+        mon = Monitor(client, _make_raw(controllable="1"))
         result = mon.ptz_control_command("right", "tok", "http://zm.test/zm/")
         assert result is False
 
-    @patch("zoneminder.monitor.requests.post")
-    def test_ptz_passes_verify_ssl(self, mock_post):
-        """PTZ should pass verify= kwarg to requests.post."""
-        mock_post.return_value.ok = True
+    def test_ptz_uses_session(self):
+        """PTZ should use the client's session for connection pooling."""
         client = StubClient()
-        client._verify_ssl = False
+        client._session.post.return_value = MagicMock(ok=True)
         mon = Monitor(client, _make_raw(controllable="1"))
         mon.ptz_control_command("right", "tok", "http://zm.test/zm/")
-        call_kwargs = mock_post.call_args
-        assert call_kwargs.kwargs["verify"] is False
+        client._session.post.assert_called_once()
 
-    @patch("zoneminder.monitor.requests.post")
-    def test_returns_false_on_connection_error(self, mock_post):
+    def test_returns_false_on_connection_error(self):
         """ConnectionError should return False, not crash."""
         import requests as _req
 
-        mock_post.side_effect = _req.exceptions.ConnectionError("refused")
-        mon = Monitor(StubClient(), _make_raw(controllable="1"))
+        client = StubClient()
+        client._session.post.side_effect = _req.exceptions.ConnectionError("refused")
+        mon = Monitor(client, _make_raw(controllable="1"))
         result = mon.ptz_control_command("right", "tok", "http://zm.test/zm/")
         assert result is False
 
-    @patch("zoneminder.monitor.requests.post")
-    def test_returns_false_on_timeout(self, mock_post):
+    def test_returns_false_on_timeout(self):
         """Timeout should return False, not crash."""
         import requests as _req
 
-        mock_post.side_effect = _req.exceptions.Timeout("timed out")
-        mon = Monitor(StubClient(), _make_raw(controllable="1"))
+        client = StubClient()
+        client._session.post.side_effect = _req.exceptions.Timeout("timed out")
+        mon = Monitor(client, _make_raw(controllable="1"))
         result = mon.ptz_control_command("right", "tok", "http://zm.test/zm/")
         assert result is False
 
-    @patch("zoneminder.monitor.requests.post")
-    def test_no_token_param_when_token_is_none(self, mock_post):
+    def test_no_token_param_when_token_is_none(self):
         """Legacy auth: token=None should not appear in params."""
-        mock_post.return_value.ok = True
-        mon = Monitor(StubClient(), _make_raw(controllable="1"))
+        client = StubClient()
+        client._session.post.return_value = MagicMock(ok=True)
+        mon = Monitor(client, _make_raw(controllable="1"))
         mon.ptz_control_command("right", None, "http://zm.test/zm/")
-        params = mock_post.call_args.kwargs["params"]
+        params = client._session.post.call_args.kwargs["params"]
         assert "token" not in params
 
-    @patch("zoneminder.monitor.requests.post")
-    def test_cookies_passed_through(self, mock_post):
-        """Cookies should be forwarded to requests.post."""
-        mock_post.return_value.ok = True
-        mon = Monitor(StubClient(), _make_raw(controllable="1"))
+    def test_cookies_passed_through(self):
+        """Cookies should be forwarded to session.post."""
+        client = StubClient()
+        client._session.post.return_value = MagicMock(ok=True)
+        mon = Monitor(client, _make_raw(controllable="1"))
         cookies = {"ZMSESSID": "abc123"}
         mon.ptz_control_command("right", None, "http://zm.test/zm/", cookies=cookies)
-        assert mock_post.call_args.kwargs["cookies"] == cookies
+        assert client._session.post.call_args.kwargs["cookies"] == cookies
 
 
 # ---------------------------------------------------------------------------

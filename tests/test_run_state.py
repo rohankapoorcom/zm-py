@@ -5,6 +5,8 @@ Uses a stub client -- no live ZoneMinder server needed.
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 from zoneminder.run_state import RunState
 
 # ---------------------------------------------------------------------------
@@ -18,8 +20,10 @@ class StubClient:
     def __init__(self, states_response=None):
         self._states_response = states_response or {"states": []}
         self._set_active_calls = []
+        self._get_state_call_count = 0
 
     def get_state(self, api_url):
+        self._get_state_call_count += 1
         return self._states_response
 
     def set_active_state(self, name):
@@ -56,6 +60,29 @@ class TestRunStateConstruction:
         raw = {"Id": "1", "Name": "Home"}
         rs = RunState(StubClient(), raw)
         assert isinstance(rs.name, str)
+
+    def test_seeds_is_active_from_constructor(self):
+        """When IsActive is in the raw dict, it should be cached."""
+        raw = {"Id": "1", "Name": "Default", "IsActive": 1}
+        client = StubClient()
+        rs = RunState(client, raw)
+        assert rs.active is True
+        assert client._get_state_call_count == 0  # No API call, used cached
+
+    def test_seeds_is_active_false_from_constructor(self):
+        raw = {"Id": "1", "Name": "Default", "IsActive": 0}
+        client = StubClient()
+        rs = RunState(client, raw)
+        assert rs.active is False
+        assert client._get_state_call_count == 0
+
+    def test_without_is_active_fetches_on_first_access(self):
+        """When IsActive is not in constructor, active should fetch from API."""
+        resp = _states_response((1, "Default", 1))
+        client = StubClient(states_response=resp)
+        rs = RunState(client, {"Id": "1", "Name": "Default"})
+        assert rs.active is True
+        assert client._get_state_call_count == 1
 
 
 # ---------------------------------------------------------------------------
@@ -125,6 +152,50 @@ class TestRunStateActive:
         rs_default = RunState(client, {"Id": "1", "Name": "Default"})
         assert rs_away.active is True
         assert rs_default.active is False
+
+
+# ---------------------------------------------------------------------------
+# TTL caching
+# ---------------------------------------------------------------------------
+
+class TestRunStateTtlCache:
+    def test_cached_within_ttl(self):
+        """Consecutive calls within 1s should not re-fetch."""
+        resp = _states_response((1, "Default", 1))
+        client = StubClient(states_response=resp)
+        rs = RunState(client, {"Id": "1", "Name": "Default", "IsActive": 1})
+        # First call uses cached value (seeded from constructor)
+        assert rs.active is True
+        assert rs.active is True
+        assert rs.active is True
+        assert client._get_state_call_count == 0
+
+    @patch("zoneminder.run_state.time.monotonic")
+    def test_refetches_after_ttl(self, mock_monotonic):
+        """After 1s TTL expires, active should re-fetch from API."""
+        resp = _states_response((1, "Default", 0))
+        client = StubClient(states_response=resp)
+
+        mock_monotonic.return_value = 100.0
+        rs = RunState(client, {"Id": "1", "Name": "Default", "IsActive": 1})
+
+        # Cached: still returns True (seeded value)
+        mock_monotonic.return_value = 100.5
+        assert rs.active is True
+        assert client._get_state_call_count == 0
+
+        # TTL expired: fetches from API, which returns IsActive=0
+        mock_monotonic.return_value = 101.1
+        assert rs.active is False
+        assert client._get_state_call_count == 1
+
+    def test_no_cache_without_is_active_in_constructor(self):
+        """Without IsActive in constructor, first access should fetch."""
+        resp = _states_response((1, "Default", 1))
+        client = StubClient(states_response=resp)
+        rs = RunState(client, {"Id": "1", "Name": "Default"})
+        assert rs.active is True
+        assert client._get_state_call_count == 1
 
 
 # ---------------------------------------------------------------------------

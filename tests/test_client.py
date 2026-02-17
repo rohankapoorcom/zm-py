@@ -83,6 +83,24 @@ class TestVerifySsl:
 
 
 # ---------------------------------------------------------------------------
+# Session
+# ---------------------------------------------------------------------------
+
+class TestSession:
+    def test_session_created(self):
+        c = _client()
+        assert isinstance(c._session, requests.Session)
+
+    def test_session_verify_matches_client(self):
+        c = _client(verify_ssl=False)
+        assert c._session.verify is False
+
+    def test_session_verify_true(self):
+        c = _client(verify_ssl=True)
+        assert c._session.verify is True
+
+
+# ---------------------------------------------------------------------------
 # is_available
 # ---------------------------------------------------------------------------
 
@@ -208,6 +226,30 @@ class TestGetActiveState:
         with patch.object(c, "get_state", return_value=raw):
             assert c.get_active_state() is None
 
+    def test_single_api_call(self):
+        """get_active_state should make exactly 1 API call, not N+1."""
+        raw = {
+            "states": [
+                {"State": {"Id": "1", "Name": "Default", "IsActive": 0}},
+                {"State": {"Id": "2", "Name": "Away", "IsActive": 1}},
+                {"State": {"Id": "3", "Name": "Night", "IsActive": 0}},
+            ]
+        }
+        c = _client()
+        with patch.object(c, "get_state", return_value=raw) as mock_get:
+            c.get_active_state()
+        mock_get.assert_called_once()
+
+    def test_empty_response_returns_none(self):
+        c = _client()
+        with patch.object(c, "get_state", return_value={}):
+            assert c.get_active_state() is None
+
+    def test_no_states_key_returns_none(self):
+        c = _client()
+        with patch.object(c, "get_state", return_value={"other": "data"}):
+            assert c.get_active_state() is None
+
 
 # ---------------------------------------------------------------------------
 # set_active_state
@@ -243,14 +285,14 @@ class TestMoveMonitor:
         raw = _monitor_raw(controllable="1" if controllable else "0")
         return Monitor(_client(), raw)
 
-    @patch("zoneminder.monitor.requests.post")
-    def test_delegates_to_ptz_control_command(self, mock_post):
-        mock_post.return_value.ok = True
+    def test_delegates_to_ptz_control_command(self):
         c = _client()
         c._auth_token = "test-token"
-        mon = self._make_monitor(controllable=True)
+        c._session = MagicMock()
+        c._session.post.return_value = MagicMock(ok=True)
+        mon = Monitor(c, _monitor_raw(controllable="1"))
         c.move_monitor(mon, "right")
-        mock_post.assert_called_once()
+        c._session.post.assert_called_once()
 
     def test_raises_on_invalid_direction(self):
         """move_monitor should propagate ControlTypeError to callers."""
@@ -268,32 +310,31 @@ class TestMoveMonitor:
         with pytest.raises(MonitorControlTypeError):
             c.move_monitor(mon, "right")
 
-    @patch("zoneminder.monitor.requests.post")
-    def test_returns_bool_on_success(self, mock_post):
+    def test_returns_bool_on_success(self):
         """move_monitor should return True on success."""
-        mock_post.return_value.ok = True
         c = _client()
         c._auth_token = "tok"
-        mon = self._make_monitor(controllable=True)
+        c._session = MagicMock()
+        c._session.post.return_value = MagicMock(ok=True)
+        mon = Monitor(c, _monitor_raw(controllable="1"))
         result = c.move_monitor(mon, "right")
         assert result is True
 
-    @patch("zoneminder.monitor.requests.post")
-    def test_passes_cookies_to_ptz(self, mock_post):
-        """move_monitor should forward session cookies for legacy auth."""
-        mock_post.return_value.ok = True
+    def test_session_cookies_used_for_ptz(self):
+        """PTZ should use the session (which holds cookies from legacy auth)."""
         c = _client()
-        c._cookies = {"ZMSESSID": "abc123"}
-        mon = self._make_monitor(controllable=True)
+        c._auth_token = None
+        c._session = MagicMock()
+        c._session.post.return_value = MagicMock(ok=True)
+        mon = Monitor(c, _monitor_raw(controllable="1"))
         c.move_monitor(mon, "right")
-        assert mock_post.call_args.kwargs["cookies"] == {"ZMSESSID": "abc123"}
+        c._session.post.assert_called_once()
 
 
 class TestStaleTokenRetry:
     """Verify _zm_request recomputes token suffix after login() refreshes the token."""
 
-    @patch("zoneminder.zm.requests.request")
-    def test_uses_refreshed_token_after_relogin(self, mock_request):
+    def test_uses_refreshed_token_after_relogin(self):
         """After a 401 triggers login(), the next request should use the new token."""
         c = _client()
         c._auth_token = "old-token"
@@ -302,7 +343,8 @@ class TestStaleTokenRetry:
         resp_fail = MagicMock(ok=False, status_code=401)
         resp_ok = MagicMock(ok=True)
         resp_ok.json.return_value = {"result": 1}
-        mock_request.side_effect = [resp_fail, resp_ok]
+        c._session = MagicMock()
+        c._session.request.side_effect = [resp_fail, resp_ok]
 
         # login() refreshes the token
         with patch.object(c, "login", side_effect=lambda: setattr(c, "_auth_token", "new-token")):
@@ -310,34 +352,34 @@ class TestStaleTokenRetry:
 
         assert result == {"result": 1}
         # Second call should have used new-token, not old-token
-        second_call_params = mock_request.call_args_list[1][1].get("params", {})
-        assert second_call_params == {"token": "new-token"}
+        second_call_kwargs = c._session.request.call_args_list[1][1]
+        assert second_call_kwargs.get("params") == {"token": "new-token"}
 
 
 class TestRetryExhaustion:
     """Verify _zm_request returns {} when all retries fail."""
 
-    @patch("zoneminder.zm.requests.request")
-    def test_returns_empty_dict_on_exhaustion(self, mock_request):
+    def test_returns_empty_dict_on_exhaustion(self):
         """When all retries fail, return {} instead of error response JSON."""
         c = _client()
 
         resp_fail = MagicMock(ok=False, status_code=401)
         resp_fail.json.return_value = {"error": "Unauthorized"}
-        mock_request.return_value = resp_fail
+        c._session = MagicMock()
+        c._session.request.return_value = resp_fail
 
         with patch.object(c, "login"):
             result = c._zm_request("get", "api/monitors.json")
 
         assert result == {}
 
-    @patch("zoneminder.zm.requests.request")
-    def test_no_wasted_login_on_last_attempt(self, mock_request):
+    def test_no_wasted_login_on_last_attempt(self):
         """login() should not be called after the final failed attempt."""
         c = _client()
 
         resp_fail = MagicMock(ok=False, status_code=401)
-        mock_request.return_value = resp_fail
+        c._session = MagicMock()
+        c._session.request.return_value = resp_fail
 
         with patch.object(c, "login") as mock_login:
             c._zm_request("get", "api/monitors.json")
@@ -349,27 +391,26 @@ class TestRetryExhaustion:
 class TestLoginConnectionError:
     """Verify login() returns False on ConnectionError instead of crashing."""
 
-    @patch("zoneminder.zm.requests.post")
-    def test_login_returns_false_on_connection_error(self, mock_post):
+    def test_login_returns_false_on_connection_error(self):
         """login() should catch ConnectionError and return False."""
-        mock_post.side_effect = requests.exceptions.ConnectionError("refused")
         c = _client()
+        c._session = MagicMock()
+        c._session.post.side_effect = requests.exceptions.ConnectionError("refused")
         assert c.login() is False
 
-    @patch("zoneminder.zm.requests.post")
-    def test_legacy_auth_post_connection_error(self, mock_post):
+    def test_legacy_auth_post_connection_error(self):
         """_legacy_auth() should catch ConnectionError on the POST."""
-        mock_post.side_effect = requests.exceptions.ConnectionError("refused")
         c = _client()
+        c._session = MagicMock()
+        c._session.post.side_effect = requests.exceptions.ConnectionError("refused")
         assert c._legacy_auth() is False
 
-    @patch("zoneminder.zm.requests.get")
-    @patch("zoneminder.zm.requests.post")
-    def test_legacy_auth_get_connection_error(self, mock_post, mock_get):
+    def test_legacy_auth_get_connection_error(self):
         """_legacy_auth() should catch ConnectionError on the verification GET."""
-        mock_post.return_value = MagicMock(cookies={})
-        mock_get.side_effect = requests.exceptions.ConnectionError("refused")
         c = _client()
+        c._session = MagicMock()
+        c._session.post.return_value = MagicMock(cookies={})
+        c._session.get.side_effect = requests.exceptions.ConnectionError("refused")
         assert c._legacy_auth() is False
 
 
@@ -472,15 +513,76 @@ class TestMultiServerPtzRouting:
             result = c.get_server_url_for_monitor(raw_monitor)
         assert result == "https://zm2.test/zm/"
 
-    @patch("zoneminder.monitor.requests.post")
-    def test_move_monitor_uses_server_url(self, mock_post):
+    def test_move_monitor_uses_server_url(self):
         """move_monitor should resolve the per-server URL for PTZ."""
-        mock_post.return_value.ok = True
         c = _client()
         c._auth_token = "tok"
+        c._session = MagicMock()
+        c._session.post.return_value = MagicMock(ok=True)
         raw = {"servers": [_server_raw(2, "Srv2", hostname="zm2.test", protocol="https")]}
         with patch.object(c, "get_state", return_value=raw):
             mon = Monitor(c, _monitor_raw(controllable="1", server_id="2"))
             c.move_monitor(mon, "right")
-        call_kwargs = mock_post.call_args
+        call_kwargs = c._session.post.call_args
         assert call_kwargs.kwargs["url"] == "https://zm2.test/zm/index.php"
+
+
+# ---------------------------------------------------------------------------
+# get_event_counts caching
+# ---------------------------------------------------------------------------
+
+
+class TestGetEventCounts:
+    def test_caches_within_ttl(self):
+        """Multiple calls within 1s should make only 1 API call."""
+        c = _client()
+        from zoneminder.monitor import TimePeriod
+
+        call_count = 0
+
+        def counting_get_state(url):
+            nonlocal call_count
+            call_count += 1
+            return {"results": {"1": 42}}
+
+        with patch.object(c, "get_state", side_effect=counting_get_state):
+            r1 = c.get_event_counts(TimePeriod.ALL)
+            r2 = c.get_event_counts(TimePeriod.ALL)
+            r3 = c.get_event_counts(TimePeriod.ALL)
+
+        assert call_count == 1
+        assert r1 == {"1": 42}
+        assert r2 == {"1": 42}
+        assert r3 == {"1": 42}
+
+    def test_different_periods_cache_separately(self):
+        """Different time periods should have separate cache entries."""
+        c = _client()
+        from zoneminder.monitor import TimePeriod
+
+        call_count = 0
+
+        def counting_get_state(url):
+            nonlocal call_count
+            call_count += 1
+            return {"results": {"1": call_count}}
+
+        with patch.object(c, "get_state", side_effect=counting_get_state):
+            c.get_event_counts(TimePeriod.ALL)
+            c.get_event_counts(TimePeriod.HOUR)
+
+        assert call_count == 2
+
+    def test_returns_none_on_error(self):
+        c = _client()
+        from zoneminder.monitor import TimePeriod
+
+        with patch.object(c, "get_state", return_value={}):
+            assert c.get_event_counts(TimePeriod.ALL) is None
+
+    def test_returns_empty_dict_for_empty_list(self):
+        c = _client()
+        from zoneminder.monitor import TimePeriod
+
+        with patch.object(c, "get_state", return_value={"results": []}):
+            assert c.get_event_counts(TimePeriod.ALL) == {}

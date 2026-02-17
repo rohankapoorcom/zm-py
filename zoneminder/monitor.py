@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import Enum
 import logging
 import time
-from urllib.parse import quote, urlencode
+from urllib.parse import urlencode
 
 import requests
 
@@ -89,10 +89,10 @@ class ControlType(Enum):
 
         Example values: 'right', 'UP-RIGHT', 'down', 'down-left', or 'up_left'.
         """
-        for move_key, move_obj in ControlType.__members__.items():
-            if move_key == move.upper().replace("-", "_"):
-                return move_obj
-        raise ControlTypeError()
+        try:
+            return cls[move.upper().replace("-", "_")]
+        except KeyError:
+            raise ControlTypeError() from None
 
 
 class MonitorState(Enum):
@@ -247,6 +247,8 @@ class Monitor:
             _LOGGER.warning("Could not get availability for monitor %s.", self._monitor_id)
             return False
 
+        self.update_monitor()
+
         # Monitor_Status was only added in ZM 1.32.3
         monitor_status = self._raw_result.get("Monitor_Status", None)
         if not monitor_status:
@@ -259,29 +261,13 @@ class Monitor:
         """Get the number of events that have occurred on this Monitor.
 
         Specifically only gets events that have occurred within the TimePeriod
-        provided.
+        provided. Delegates to the client's cached bulk fetch so that multiple
+        monitors in the same polling cycle share a single API call.
         """
-        date_filter = quote(f"1 {time_period.period}")
-        if time_period == TimePeriod.ALL:
-            # The consoleEvents API uses DATE_SUB, so give it
-            # something large
-            date_filter = quote("100 year")
-
-        archived_filter = "/Archived=:0"
-        if include_archived:
-            archived_filter = ""
-
-        event = self._client.get_state(
-            f"api/events/consoleEvents/{date_filter}{archived_filter}.json"
-        )
-
-        try:
-            events_by_monitor = event["results"]
-            if isinstance(events_by_monitor, list):
-                return 0
-            return events_by_monitor.get(str(self._monitor_id), 0)
-        except (TypeError, KeyError, AttributeError):
+        events_by_monitor = self._client.get_event_counts(time_period, include_archived)
+        if events_by_monitor is None:
             return None
+        return events_by_monitor.get(str(self._monitor_id), 0)
 
     def _build_image_url(self, monitor, mode) -> str:
         """Build and return a ZoneMinder camera image url."""
@@ -315,12 +301,11 @@ class Monitor:
             params["token"] = token
 
         try:
-            req = requests.post(
+            req = self._client._session.post(  # pylint: disable=protected-access
                 url=ptz_url,
                 params=params,
                 cookies=cookies,
                 timeout=10,
-                verify=self._client.verify_ssl,
             )
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             _LOGGER.exception("Unable to connect to ZoneMinder for PTZ control")

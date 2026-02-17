@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
+import time
 from urllib.parse import quote, urljoin
 
 import requests
 
-from zoneminder.monitor import Monitor, get_api_alarm_states
+from zoneminder.monitor import Monitor, TimePeriod, get_api_alarm_states
 from zoneminder.run_state import RunState
 from zoneminder.server import Server
 
@@ -39,10 +40,12 @@ class ZoneMinder:
         self._username = username
         self._password = password
         self._verify_ssl = verify_ssl
-        self._cookies: requests.cookies.RequestsCookieJar | None = None
+        self._session = requests.Session()
+        self._session.verify = verify_ssl
         self._auth_token: str | None = None
         self._zm_version: str | None = None
         self._servers: dict[int, Server] | None = None
+        self._event_cache: dict[tuple, tuple[float, dict | None]] = {}
 
     def login(self) -> bool:
         """Login to the ZoneMinder API."""
@@ -55,10 +58,9 @@ class ZoneMinder:
             login_post["pass"] = self._password
 
         try:
-            req = requests.post(
+            req = self._session.post(
                 urljoin(self._server_url, "api/host/login.json"),
                 data=login_post,
-                verify=self._verify_ssl,
                 timeout=ZoneMinder.DEFAULT_TIMEOUT,
             )
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -85,27 +87,24 @@ class ZoneMinder:
             login_post["password"] = self._password
 
         try:
-            req = requests.post(
+            req = self._session.post(
                 urljoin(self._server_url, "index.php"),
                 data=login_post,
-                verify=self._verify_ssl,
                 timeout=ZoneMinder.DEFAULT_TIMEOUT,
             )
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             _LOGGER.exception("Unable to connect to ZoneMinder during legacy login")
             return False
 
-        self._cookies = req.cookies
+        # Session stores cookies automatically from the login response.
 
         # Login calls returns a 200 response on both failure and success.
         # The only way to tell if you logged in correctly is to issue an api
         # call.
         try:
-            req = requests.get(
+            req = self._session.get(
                 urljoin(self._server_url, "api/host/getVersion.json"),
-                cookies=self._cookies,
                 timeout=ZoneMinder.DEFAULT_TIMEOUT,
-                verify=self._verify_ssl,
             )
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             _LOGGER.exception("Unable to connect to ZoneMinder during legacy login verification")
@@ -138,14 +137,12 @@ class ZoneMinder:
             for attempt in range(ZoneMinder.LOGIN_RETRIES):
                 params = {"token": self._auth_token} if self._auth_token else None
 
-                req = requests.request(
+                req = self._session.request(
                     method,
                     urljoin(self._server_url, api_url),
                     params=params,
                     data=data,
-                    cookies=self._cookies,
                     timeout=timeout,
-                    verify=self._verify_ssl,
                 )
 
                 if req.ok:
@@ -297,9 +294,16 @@ class ZoneMinder:
 
     def get_active_state(self) -> str | None:
         """Get the name of the active run state from the ZoneMinder API."""
-        for state in self.get_run_states():
-            if state.active:
-                return state.name
+        raw_states = self.get_state("api/states.json")
+        if not raw_states or "states" not in raw_states:
+            return None
+        for i in raw_states["states"]:
+            state = i["State"]
+            try:
+                if int(state["IsActive"]) == 1:
+                    return state["Name"]
+            except (ValueError, TypeError, KeyError):
+                continue
         return None
 
     def set_active_state(self, state_name) -> dict:
@@ -315,6 +319,40 @@ class ZoneMinder:
         return self._zm_request(
             "get", f"api/states/change/{quote(state_name, safe='')}.json", timeout=120
         )
+
+    def get_event_counts(self, time_period, include_archived=False) -> dict | None:
+        """Fetch console event counts for all monitors.
+
+        Results are cached for 1 second to avoid duplicate API calls when
+        multiple monitors request events in the same polling cycle.
+        """
+        cache_key = (time_period.period, include_archived)
+        now = time.monotonic()
+        cached = self._event_cache.get(cache_key)
+        if cached is not None:
+            cached_time, cached_result = cached
+            if now - cached_time < 1.0:
+                return cached_result
+
+        date_filter = quote(f"1 {time_period.period}")
+        if time_period == TimePeriod.ALL:
+            date_filter = quote("100 year")
+
+        archived_filter = "/Archived=:0"
+        if include_archived:
+            archived_filter = ""
+
+        response = self.get_state(f"api/events/consoleEvents/{date_filter}{archived_filter}.json")
+
+        try:
+            result = response["results"]
+            if isinstance(result, list):
+                result = {}
+        except (TypeError, KeyError):
+            result = None
+
+        self._event_cache[cache_key] = (now, result)
+        return result
 
     def get_zms_url(self) -> str:
         """Get the url to the current ZMS instance."""
@@ -377,7 +415,7 @@ class ZoneMinder:
     def move_monitor(self, monitor: Monitor, direction: str) -> bool:
         """Call Zoneminder to move."""
         base_url = self.get_server_url_for_monitor(monitor.raw_monitor)
-        result = monitor.ptz_control_command(direction, self._auth_token, base_url, self._cookies)
+        result = monitor.ptz_control_command(direction, self._auth_token, base_url)
         if result:
             _LOGGER.info("Successfully moved camera to %s", direction)
         else:
