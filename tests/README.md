@@ -87,6 +87,7 @@ ZM_E2E_WRITE=1 pytest -m zm_e2e_write tests/e2e/ -v
 | `test_run_state.py` | RunState construction, properties, `active` parsing, `activate` |
 | `test_enums.py` | `TimePeriod` (period/title/get_time_period), `MonitorState`, `ControlType` values |
 | `test_exceptions.py` | Exception hierarchy, `__str__` formatting |
+| `test_server.py` | Server construction, properties, ZMS URL building, base URL building |
 | `test_client.py` | `verify_ssl`, `is_available` parsing, `get_monitors`/`get_run_states`/`get_active_state` response handling, `move_monitor` exception swallowing |
 
 ## E2E Test Modules
@@ -98,7 +99,8 @@ ZM_E2E_WRITE=1 pytest -m zm_e2e_write tests/e2e/ -v
 | `test_e2e_states.py` | Run states listing, active state, state switching | `api/states.json`, `api/states/change/{name}.json` |
 | `test_e2e_availability.py` | Daemon check, get_state/change_state plumbing, ZMS URL, auth URL helpers | `api/host/daemonCheck.json`, `api/host/getVersion.json` |
 | `test_e2e_ptz.py` | PTZ control on controllable/non-controllable monitors | `index.php` (control view) |
-| `test_e2e_api_probes.py` | Raw API response inspection -- documents actual types/shapes from ZM 1.38.x to validate BUGS.md | All endpoints |
+| `test_e2e_servers.py` | Server listing, server URLs, monitor ServerId probe | `api/servers.json` |
+| `test_e2e_api_probes.py` | Raw API response inspection -- documents actual types/shapes from ZM 1.38.x to validate bugs | All endpoints |
 
 ## API Coverage
 
@@ -117,6 +119,7 @@ GET  api/states/change/{name}.json -> ZoneMinder.set_active_state() [write]
 GET  api/monitors/alarm/...        -> Monitor.is_recording
 GET  api/monitors/daemonStatus/... -> Monitor.is_available
 GET  api/events/consoleEvents/...  -> Monitor.get_events()
+GET  api/servers.json               -> ZoneMinder.get_servers()
 POST index.php (PTZ control)       -> Monitor.ptz_control_command() [write]
 ```
 
@@ -145,11 +148,6 @@ After the test run, a summary section is printed showing:
 - Server connection details
 - Test target monitors
 - Skip reasons and counts
-
-## Known Bugs
-
-See [BUGS.md](BUGS.md) for bugs discovered in zm-py during test development.
-These are **not fixed** -- they are documented to guide future refactoring.
 
 ## Comparison with Sister Projects
 

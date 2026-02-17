@@ -1,0 +1,290 @@
+<mxfile host="app.diagrams.net" agent="Claude Code" version="26.0.0">
+  <diagram id="page-1-endpoints" name="ZoneMinder API Endpoints">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <!-- Title -->
+        <mxCell id="title1" value="ZoneMinder API Endpoints Called by zm-py" style="text;html=1;fontSize=18;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="250" y="20" width="700" height="40" as="geometry" />
+        </mxCell>
+        <!-- Legend -->
+        <mxCell id="legend_get" value="GET" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="800" y="20" width="50" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_post" value="POST" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="860" y="20" width="50" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_write" value="= mutates state" style="text;html=1;fontSize=10;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="920" y="22" width="100" height="20" as="geometry" />
+        </mxCell>
+        <!-- Host Controller -->
+        <mxCell id="host_header" value="&lt;b&gt;Host Controller&lt;/b&gt;" style="text;html=1;fontSize=14;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ep1" value="&lt;b&gt;POST&lt;/b&gt; api/host/login.json" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ep1m" value="→ ZoneMinder.login()" style="text;html=1;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="350" y="115" width="250" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ep2" value="&lt;b&gt;POST&lt;/b&gt; index.php (legacy auth)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="155" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ep2m" value="→ ZoneMinder._legacy_auth()" style="text;html=1;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="350" y="160" width="250" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ep3" value="&lt;b&gt;GET&lt;/b&gt; api/host/getVersion.json" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="200" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ep3m" value="→ ZoneMinder._legacy_auth() [verify]" style="text;html=1;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="350" y="205" width="250" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ep4" value="&lt;b&gt;GET&lt;/b&gt; api/host/daemonCheck.json" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="245" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ep4m" value="→ ZoneMinder.is_available" style="text;html=1;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="350" y="250" width="250" height="25" as="geometry" />
+        </mxCell>
+        <!-- Monitors Controller -->
+        <mxCell id="mon_header" value="&lt;b&gt;Monitors Controller&lt;/b&gt;" style="text;html=1;fontSize=14;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="310" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ep5" value="&lt;b&gt;GET&lt;/b&gt; api/monitors.json" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="340" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ep5m" value="→ ZoneMinder.get_monitors() / update_all_monitors()" style="text;html=1;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="350" y="345" width="350" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ep6" value="&lt;b&gt;GET&lt;/b&gt; api/monitors/{id}.json" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="385" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ep6m" value="→ Monitor.update_monitor()" style="text;html=1;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="350" y="390" width="250" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ep7" value="&lt;b&gt;POST&lt;/b&gt; api/monitors/{id}.json" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="430" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ep7m" value="→ Monitor.function (setter) ✏️" style="text;html=1;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="350" y="435" width="250" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ep8" value="&lt;b&gt;GET&lt;/b&gt; api/monitors/alarm/id:{id}/command:..." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="475" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ep8m" value="→ Monitor.is_recording / set_force_alarm_state()" style="text;html=1;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="350" y="480" width="350" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ep9" value="&lt;b&gt;GET&lt;/b&gt; api/monitors/daemonStatus/id:{id}/..." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="520" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ep9m" value="→ Monitor.is_available" style="text;html=1;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="350" y="525" width="250" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ep10" value="&lt;b&gt;POST&lt;/b&gt; index.php (PTZ control)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="565" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ep10m" value="→ Monitor.ptz_control_command() ✏️" style="text;html=1;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="350" y="570" width="300" height="25" as="geometry" />
+        </mxCell>
+        <!-- Events Controller -->
+        <mxCell id="evt_header" value="&lt;b&gt;Events Controller&lt;/b&gt;" style="text;html=1;fontSize=14;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="630" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ep11" value="&lt;b&gt;GET&lt;/b&gt; api/events/consoleEvents/..." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="660" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ep11m" value="→ ZoneMinder.get_event_counts() / Monitor.get_events()" style="text;html=1;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="350" y="665" width="400" height="25" as="geometry" />
+        </mxCell>
+        <!-- States Controller -->
+        <mxCell id="st_header" value="&lt;b&gt;States Controller&lt;/b&gt;" style="text;html=1;fontSize=14;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="720" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ep12" value="&lt;b&gt;GET&lt;/b&gt; api/states.json" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="750" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ep12m" value="→ ZoneMinder.get_run_states() / get_active_state()" style="text;html=1;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="350" y="755" width="350" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ep13" value="&lt;b&gt;GET&lt;/b&gt; api/states/change/{name}.json" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="795" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ep13m" value="→ ZoneMinder.set_active_state() ✏️" style="text;html=1;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="350" y="800" width="300" height="25" as="geometry" />
+        </mxCell>
+        <!-- Servers Controller -->
+        <mxCell id="srv_header" value="&lt;b&gt;Servers Controller&lt;/b&gt;" style="text;html=1;fontSize=14;align=left;" vertex="1" parent="1">
+          <mxGeometry x="640" y="310" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ep14" value="&lt;b&gt;GET&lt;/b&gt; api/servers.json" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="640" y="340" width="300" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ep14m" value="→ ZoneMinder.get_servers() / _ensure_servers()" style="text;html=1;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="640" y="380" width="350" height="25" as="geometry" />
+        </mxCell>
+        <!-- Summary box -->
+        <mxCell id="summary" value="&lt;b&gt;Summary: 14 endpoint calls&lt;/b&gt;&lt;br&gt;&lt;hr&gt;&lt;font style=&quot;font-size:11px&quot;&gt;9 GET (read-only)&lt;br&gt;3 POST (mutating: login, function set, PTZ)&lt;br&gt;1 POST (legacy auth — session cookies)&lt;br&gt;1 GET (state change — mutating via ZM convention)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;verticalAlign=top;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="640" y="440" width="350" height="120" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-2-monitor-state" name="Monitor State Model">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <!-- Title -->
+        <mxCell id="title2" value="Monitor State Model: Legacy vs ZM 1.37+" style="text;html=1;fontSize=18;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="250" y="20" width="700" height="40" as="geometry" />
+        </mxCell>
+        <!-- Legacy Function enum -->
+        <mxCell id="legacy_title" value="&lt;b&gt;Legacy: Single Function Column&lt;/b&gt;&lt;br&gt;&lt;i&gt;(all ZM versions)&lt;/i&gt;" style="text;html=1;fontSize=14;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="300" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_none" value="None" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="130" width="110" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_monitor" value="Monitor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="160" y="130" width="110" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_modect" value="Modect" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="280" y="130" width="110" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_record" value="Record" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="175" width="110" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_mocord" value="Mocord" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="160" y="175" width="110" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_nodect" value="Nodect" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="280" y="175" width="110" height="35" as="geometry" />
+        </mxCell>
+        <!-- New decomposed fields -->
+        <mxCell id="new_title" value="&lt;b&gt;ZM 1.37+: Decomposed Fields&lt;/b&gt;&lt;br&gt;&lt;i&gt;(zm_update-1.37.12.sql)&lt;/i&gt;" style="text;html=1;fontSize=14;align=center;" vertex="1" parent="1">
+          <mxGeometry x="500" y="80" width="300" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="cap_label" value="&lt;b&gt;Capturing&lt;/b&gt;" style="text;html=1;fontSize=12;align=center;" vertex="1" parent="1">
+          <mxGeometry x="500" y="130" width="100" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="cap_vals" value="None | Ondemand | Always" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="610" y="125" width="200" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ana_label" value="&lt;b&gt;Analysing&lt;/b&gt;" style="text;html=1;fontSize=12;align=center;" vertex="1" parent="1">
+          <mxGeometry x="500" y="170" width="100" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="ana_vals" value="None | Always" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="610" y="165" width="200" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="rec_label" value="&lt;b&gt;Recording&lt;/b&gt;" style="text;html=1;fontSize=12;align=center;" vertex="1" parent="1">
+          <mxGeometry x="500" y="210" width="100" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="rec_vals" value="None | OnMotion | Always" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="610" y="205" width="200" height="35" as="geometry" />
+        </mxCell>
+        <!-- Mapping table -->
+        <mxCell id="map_title" value="&lt;b&gt;Mapping Table: Legacy ↔ Decomposed&lt;/b&gt;" style="text;html=1;fontSize=14;align=center;" vertex="1" parent="1">
+          <mxGeometry x="200" y="270" width="400" height="30" as="geometry" />
+        </mxCell>
+        <!-- Table header -->
+        <mxCell id="th_fn" value="&lt;b&gt;Function&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#333333;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="100" y="310" width="120" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="th_cap" value="&lt;b&gt;Capturing&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#333333;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="220" y="310" width="120" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="th_ana" value="&lt;b&gt;Analysing&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#333333;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="340" y="310" width="120" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="th_rec" value="&lt;b&gt;Recording&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#333333;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="460" y="310" width="120" height="35" as="geometry" />
+        </mxCell>
+        <!-- None row -->
+        <mxCell id="r1c1" value="None" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="100" y="345" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r1c2" value="None" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="345" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r1c3" value="None" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="340" y="345" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r1c4" value="None" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="345" width="120" height="30" as="geometry" />
+        </mxCell>
+        <!-- Monitor row -->
+        <mxCell id="r2c1" value="Monitor" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="100" y="375" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r2c2" value="Always" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="375" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r2c3" value="None" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="340" y="375" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r2c4" value="None" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="375" width="120" height="30" as="geometry" />
+        </mxCell>
+        <!-- Modect row -->
+        <mxCell id="r3c1" value="Modect" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="100" y="405" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r3c2" value="Always" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="405" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r3c3" value="Always" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="340" y="405" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r3c4" value="OnMotion" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="405" width="120" height="30" as="geometry" />
+        </mxCell>
+        <!-- Record row -->
+        <mxCell id="r4c1" value="Record" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="100" y="435" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r4c2" value="Always" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="435" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r4c3" value="None" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="340" y="435" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r4c4" value="Always" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="435" width="120" height="30" as="geometry" />
+        </mxCell>
+        <!-- Mocord row -->
+        <mxCell id="r5c1" value="Mocord" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="100" y="465" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r5c2" value="Always" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="465" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r5c3" value="Always" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="340" y="465" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r5c4" value="Always" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="465" width="120" height="30" as="geometry" />
+        </mxCell>
+        <!-- Nodect row -->
+        <mxCell id="r6c1" value="Nodect" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="100" y="495" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r6c2" value="Always" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="495" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r6c3" value="None" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="340" y="495" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r6c4" value="OnMotion" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="495" width="120" height="30" as="geometry" />
+        </mxCell>
+        <!-- Version detection -->
+        <mxCell id="ver_title" value="&lt;b&gt;Version Detection Logic&lt;/b&gt;" style="text;html=1;fontSize=14;align=center;" vertex="1" parent="1">
+          <mxGeometry x="200" y="570" width="400" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ver_flow" value="&lt;font style=&quot;font-size:11px&quot;&gt;&lt;b&gt;_is_zm_137_or_later(zm_version)&lt;/b&gt;&lt;br&gt;&lt;br&gt;1. Parse version string → tuple (e.g. &quot;1.38.0&quot; → (1, 38, 0))&lt;br&gt;2. Compare parsed ≥ (1, 37)&lt;br&gt;3. If True: read Capturing/Analysing/Recording from raw monitor dict&lt;br&gt;4. If all three present: derive MonitorState via _derive_function()&lt;br&gt;5. If derivation fails (unmapped combo): fall back to Function column&lt;br&gt;6. If False or version unknown: use legacy Function column directly&lt;br&gt;&lt;br&gt;&lt;b&gt;Write path (function setter):&lt;/b&gt;&lt;br&gt;• ZM ≥ 1.37: POST Monitor[Capturing], Monitor[Analysing], Monitor[Recording]&lt;br&gt;• ZM &lt; 1.37: POST Monitor[Function]&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="80" y="610" width="550" height="220" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

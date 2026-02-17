@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-zm-py is a lightweight Python API client for ZoneMinder, built specifically for the Home Assistant ZoneMinder integration. It is in **maintenance mode** — bug fixes and compatibility updates are accepted; new features are not planned. Published as `zm-py` on PyPI (v0.5.4). Only runtime dependency is `requests>=2.0`.
+zm-py is a lightweight Python API client for ZoneMinder, built specifically for the Home Assistant ZoneMinder integration. It is in **maintenance mode** — bug fixes and compatibility updates are accepted; new features are not planned. Published as `zm-py` on PyPI (v0.5.4). Only runtime dependency is `requests>=2.32.2`.
 
 ## Commands
 
@@ -47,18 +47,24 @@ poetry install
 
 ## Architecture
 
-### Package structure (4 modules)
+### Package structure (5 modules)
 
-- **`zoneminder/zm.py`** — `ZoneMinder` client class. Main entry point. Handles auth (JWT with legacy cookie fallback), HTTP requests with retry, and high-level operations (get_monitors, get_run_states, move_monitor).
-- **`zoneminder/monitor.py`** — `Monitor` class plus `MonitorState`, `ControlType`, `TimePeriod` enums. Each Monitor holds a reference to the client and makes API calls lazily through properties (`is_recording`, `is_available`, `function`).
-- **`zoneminder/run_state.py`** — `RunState` class wrapping ZM preset configurations. The `active` property fetches all states from the API on every call (not cached).
+- **`zoneminder/zm.py`** — `ZoneMinder` client class. Main entry point. Handles auth (JWT with legacy cookie fallback), HTTP requests with retry, and high-level operations (`get_monitors`, `get_run_states`, `get_servers`, `move_monitor`, `update_all_monitors`, `get_event_counts`).
+- **`zoneminder/monitor.py`** — `Monitor` class plus `MonitorState`, `ControlType`, `TimePeriod` enums. Each Monitor holds a reference to the client and makes API calls lazily through properties (`is_recording`, `is_available`, `function`). Supports version-aware ZM 1.37+ fields (`capturing`, `analysing`, `recording`) and `set_force_alarm_state()`.
+- **`zoneminder/server.py`** — `Server` class for multi-server URL routing. Builds per-server ZMS and base URLs from the ZM `api/servers.json` endpoint. Used by `ZoneMinder.get_zms_url_for_monitor()` and `get_server_url_for_monitor()` to route requests to the correct server based on a monitor's `ServerId`.
+- **`zoneminder/run_state.py`** — `RunState` class wrapping ZM preset configurations. The `active` property is cached for 1 second via `time.monotonic()` to avoid redundant API calls within a single HA poll cycle.
 - **`zoneminder/exceptions.py`** — Exception hierarchy rooted at `ZoneminderError`. Exception messages are auto-generated from class docstrings with an optional dynamic value appended.
 
 ### Key design patterns
 
-- **Client-based construction**: `Monitor` and `RunState` hold a client reference so they can make API calls on demand.
+- **Client-based construction**: `Monitor`, `RunState`, and (indirectly) `Server` hold or are fetched through a client reference so they can make API calls on demand.
 - **Defensive error handling**: Most API errors return empty dict/None rather than raising exceptions. Callers must check for falsy values.
-- **Dual auth**: JWT (ZM 1.30+) with automatic fallback to legacy session cookies.
+- **Dual auth**: JWT (ZM 1.30+) with automatic fallback to legacy session cookies. Stale JWT tokens are cleared before re-auth to prevent 401s when falling back to cookie auth.
+- **Version-aware monitor fields**: On ZM >= 1.37, the `function` property reads/writes the decomposed `Capturing`/`Analysing`/`Recording` columns instead of the legacy `Function` column.
+- **Bulk update**: `update_all_monitors()` refreshes all monitors in a single API call instead of one call per monitor. Individual `update_monitor()` results are cached for 1 second.
+- **Stream params**: `stream_scale` and `stream_maxfps` are passed at client construction and injected into all monitor image URLs.
+- **Event count caching**: `get_event_counts()` caches results for 1 second so multiple monitors in the same poll cycle share a single API call.
+- **Connection pooling**: Uses `requests.Session` for HTTP connection pooling and automatic cookie management.
 
 ## Code Style
 

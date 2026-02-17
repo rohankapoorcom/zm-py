@@ -30,6 +30,12 @@ Historical sources and authorship information is available as part of the Home A
 - [ZoneMinder Sensor](https://github.com/home-assistant/home-assistant/commits/dev/homeassistant/components/sensor/zoneminder.py)
 - [ZoneMinder Switch](https://github.com/home-assistant/home-assistant/commits/dev/homeassistant/components/switch/zoneminder.py)
 
+## Documentation
+
+- **[API Reference](docs/api.md)** — all public classes, methods, properties, and enums
+- **[Architecture](docs/architecture.md)** — package structure, design patterns, caching strategy, Mermaid diagrams
+- **[Architecture diagrams](docs/architecture.drawio)** — detailed drawio diagrams (open in [draw.io](https://app.diagrams.net/))
+
 ## Installation
 
 ### PyPI
@@ -53,7 +59,9 @@ zm_client = ZoneMinder(
     server_path=SERVER_PATH,
     username=USER,
     password=PASS,
-    verify_ssl=False
+    verify_ssl=False,
+    stream_scale=50,       # optional: scale streams to 50%
+    stream_maxfps=5.0,     # optional: cap MJPEG at 5 FPS
 )
 
 # Zoneminder authentication
