@@ -170,6 +170,25 @@ class ZoneMinder:
             _LOGGER.exception("Unable to connect to ZoneMinder")
             return {}
 
+    def update_all_monitors(self, monitors: list[Monitor]) -> None:
+        """Bulk-refresh monitors via api/monitors.json (1 call instead of M)."""
+        raw_monitors = self._zm_request("get", ZoneMinder.MONITOR_URL)
+        if not raw_monitors or "monitors" not in raw_monitors:
+            _LOGGER.warning("Could not bulk-fetch monitors from ZoneMinder")
+            return
+
+        by_id: dict[int, dict] = {}
+        for raw_result in raw_monitors["monitors"]:
+            try:
+                mid = int(raw_result["Monitor"]["Id"])
+                by_id[mid] = raw_result
+            except (KeyError, ValueError, TypeError):
+                continue
+
+        for monitor in monitors:
+            if monitor.id in by_id:
+                monitor._apply_raw_result(by_id[monitor.id])  # pylint: disable=protected-access
+
     def get_monitors(self) -> list[Monitor]:
         """Get a list of Monitors from the ZoneMinder API."""
         raw_monitors = self._zm_request("get", ZoneMinder.MONITOR_URL)

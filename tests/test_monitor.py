@@ -536,6 +536,34 @@ class TestUpdateMonitor:
 
 
 # ---------------------------------------------------------------------------
+# _apply_raw_result
+# ---------------------------------------------------------------------------
+
+class TestApplyRawResult:
+    def test_updates_raw_result(self):
+        """_apply_raw_result should replace _raw_result with new data."""
+        client = StubClient()
+        mon = Monitor(client, _make_raw(function="Monitor"))
+        assert mon.function == MonitorState.MONITOR
+
+        new_raw = _make_raw(function="Modect")
+        mon._apply_raw_result(new_raw)
+        assert mon.function == MonitorState.MODECT
+
+    def test_sets_last_update_so_ttl_prevents_refetch(self):
+        """After _apply_raw_result, update_monitor() should be a TTL cache hit."""
+        client = StubClient(get_state_return={
+            "monitor": _make_raw(function="Record"),
+        })
+        mon = Monitor(client, _make_raw(function="Monitor"))
+        mon._apply_raw_result(_make_raw(function="Modect"))
+
+        # update_monitor() should skip fetch due to TTL
+        mon.update_monitor()
+        assert client._get_state_call_count == 0
+
+
+# ---------------------------------------------------------------------------
 # PTZ control
 # ---------------------------------------------------------------------------
 

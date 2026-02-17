@@ -199,6 +199,11 @@ class Monitor:
         self._raw_result = result["monitor"]
         self._last_update = now
 
+    def _apply_raw_result(self, raw_result):
+        """Apply a pre-fetched raw API result (used by bulk update)."""
+        self._raw_result = raw_result
+        self._last_update = time.monotonic()
+
     @property
     def function(self) -> MonitorState:
         """Get the MonitorState of this Monitor."""

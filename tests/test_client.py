@@ -621,3 +621,68 @@ class TestGetAlarmStatesCaching:
         s1 = c.get_alarm_states()
         s2 = c.get_alarm_states()
         assert s1 is s2
+
+
+# ---------------------------------------------------------------------------
+# update_all_monitors
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateAllMonitors:
+    def test_distributes_bulk_response_to_correct_monitors(self):
+        """Each monitor should get its matching raw_result by ID."""
+        c = _client()
+        raw1 = _monitor_raw(1, "Cam1", function="Modect")
+        raw2 = _monitor_raw(2, "Cam2", function="Record")
+        bulk_resp = {"monitors": [raw1, raw2]}
+
+        with patch.object(c, "_zm_request", return_value=bulk_resp):
+            mon1 = Monitor(c, _monitor_raw(1, "Cam1"))
+            mon2 = Monitor(c, _monitor_raw(2, "Cam2"))
+            c.update_all_monitors([mon1, mon2])
+
+        from zoneminder.monitor import MonitorState
+
+        assert mon1.function == MonitorState.MODECT
+        assert mon2.function == MonitorState.RECORD
+
+    def test_makes_exactly_one_api_call(self):
+        """update_all_monitors should call _zm_request once with MONITOR_URL."""
+        c = _client()
+        bulk_resp = {"monitors": [_monitor_raw(1), _monitor_raw(2)]}
+
+        with patch.object(c, "_zm_request", return_value=bulk_resp) as mock_req:
+            mon1 = Monitor(c, _monitor_raw(1))
+            mon2 = Monitor(c, _monitor_raw(2))
+            c.update_all_monitors([mon1, mon2])
+
+        mock_req.assert_called_once_with("get", ZoneMinder.MONITOR_URL)
+
+    def test_empty_response_preserves_existing_data(self):
+        """Empty/error response should not touch existing monitor data."""
+        c = _client()
+        mon = Monitor(c, _monitor_raw(1, function="Modect"))
+
+        with patch.object(c, "_zm_request", return_value={}):
+            c.update_all_monitors([mon])
+
+        from zoneminder.monitor import MonitorState
+
+        assert mon.function == MonitorState.MODECT
+
+    def test_missing_monitor_in_bulk_preserves_data(self):
+        """Monitor absent from bulk response should keep its existing data."""
+        c = _client()
+        raw1 = _monitor_raw(1, function="Record")
+        bulk_resp = {"monitors": [raw1]}  # Only monitor 1
+
+        mon1 = Monitor(c, _monitor_raw(1))
+        mon2 = Monitor(c, _monitor_raw(2, function="Modect"))
+
+        with patch.object(c, "_zm_request", return_value=bulk_resp):
+            c.update_all_monitors([mon1, mon2])
+
+        from zoneminder.monitor import MonitorState
+
+        assert mon1.function == MonitorState.RECORD
+        assert mon2.function == MonitorState.MODECT  # Unchanged
