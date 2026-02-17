@@ -34,7 +34,13 @@ Historical sources and authorship information is available as part of the Home A
 
 - **[API Reference](docs/api.md)** — all public classes, methods, properties, and enums
 - **[Architecture](docs/architecture.md)** — package structure, design patterns, caching strategy, Mermaid diagrams
-- **[Architecture diagrams](docs/architecture.drawio)** — detailed drawio diagrams (open in [draw.io](https://app.diagrams.net/))
+- Architecture diagrams:
+  - [Package architecture](docs/architecture-package-architecture.png)
+  - [Class relationships](docs/architecture-class-relationships.png)
+  - [Auth & request flow](docs/architecture-auth-amp-request-flow.png)
+  - [Multi-server URL routing](docs/architecture-multi-server-url-routing.png)
+  - [ZoneMinder API endpoints](docs/api-overview-zoneminder-api-endpoints.png)
+  - [Monitor state model](docs/api-overview-monitor-state-model.png)
 
 ## Installation
 
