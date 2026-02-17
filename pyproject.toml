@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "zm-py"
-version = "0.5.5.dev8"
+version = "0.5.5.dev9"
 description = "A loose python wrapper around the ZoneMinder REST API."
 authors = ["Rohan Kapoor <rohan@rohankapoor.com>"]
 maintainers = ["Nic Boet <nic@boet.cc>"]

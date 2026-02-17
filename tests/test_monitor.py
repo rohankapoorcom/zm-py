@@ -12,11 +12,14 @@ import pytest
 
 from zoneminder.exceptions import ControlTypeError, MonitorControlTypeError
 from zoneminder.monitor import (
+    _FUNCTION_TO_NEW_FIELDS,
     API_STATES_NO_OFFSET,
     API_STATES_WITH_OFFSET,
     Monitor,
     MonitorState,
     TimePeriod,
+    _derive_function,
+    _is_zm_137_or_later,
     _parse_version,
     get_api_alarm_states,
 )
@@ -48,6 +51,10 @@ class StubClient:
     @property
     def verify_ssl(self):
         return self._verify_ssl
+
+    @property
+    def zm_version(self):
+        return self._zm_version
 
     def get_zms_url(self):
         return self._zms_url
@@ -88,17 +95,31 @@ def _make_raw(
     function="Monitor",
     buffer="0",
     server_id="0",
+    capturing=None,
+    analysing=None,
+    recording=None,
 ):
-    """Build a raw monitor result dict matching the ZM API shape."""
+    """Build a raw monitor result dict matching the ZM API shape.
+
+    When capturing/analysing/recording are provided, include them in the
+    Monitor dict to simulate ZM 1.37+ API responses.
+    """
+    monitor = {
+        "Id": str(mid),
+        "Name": name,
+        "Controllable": controllable,
+        "Function": function,
+        "StreamReplayBuffer": buffer,
+        "ServerId": server_id,
+    }
+    if capturing is not None:
+        monitor["Capturing"] = capturing
+    if analysing is not None:
+        monitor["Analysing"] = analysing
+    if recording is not None:
+        monitor["Recording"] = recording
     return {
-        "Monitor": {
-            "Id": str(mid),
-            "Name": name,
-            "Controllable": controllable,
-            "Function": function,
-            "StreamReplayBuffer": buffer,
-            "ServerId": server_id,
-        },
+        "Monitor": monitor,
         "Monitor_Status": {
             "CaptureFPS": "10.00",
         },
@@ -406,10 +427,12 @@ class TestMonitorGetEvents:
 # function property
 # ---------------------------------------------------------------------------
 
-class TestMonitorFunction:
+class TestMonitorFunctionLegacy:
+    """Test function getter/setter on ZM < 1.37 (legacy Function column)."""
+
     def test_getter_returns_monitor_state(self):
         """function getter reads Function from cached raw_result."""
-        client = StubClient()
+        client = StubClient(zm_version="1.36.33")
         mon = Monitor(client, _make_raw(function="Modect"))
         assert mon.function == MonitorState.MODECT
         assert client._get_state_call_count == 0
@@ -420,20 +443,235 @@ class TestMonitorFunction:
         Even after the 1s TTL expires, reading function should be a pure read
         from _raw_result with zero API calls.
         """
-        client = StubClient()
+        client = StubClient(zm_version="1.36.33")
         mon = Monitor(client, _make_raw(function="Modect"))
         mon._last_update = 0.0  # Expire the TTL cache
         assert mon.function == MonitorState.MODECT
         assert client._get_state_call_count == 0
 
-    def test_setter_posts_new_function(self):
-        client = StubClient()
+    def test_setter_posts_function_column(self):
+        """On ZM < 1.37, setter writes Monitor[Function]."""
+        client = StubClient(zm_version="1.36.33")
         mon = Monitor(client, _make_raw())
         mon.function = MonitorState.RECORD
         assert len(client._change_state_calls) == 1
         url, data = client._change_state_calls[0]
         assert "monitors/1.json" in url
         assert data == {"Monitor[Function]": "Record"}
+
+    def test_getter_all_states(self):
+        """Each MonitorState should parse correctly from the Function column."""
+        client = StubClient(zm_version="1.36.33")
+        for state in MonitorState:
+            mon = Monitor(client, _make_raw(function=state.value))
+            assert mon.function == state
+
+
+class TestMonitorFunctionZm137:
+    """Test function getter/setter on ZM >= 1.37 (new decomposed fields)."""
+
+    def test_getter_derives_from_new_fields(self):
+        """On ZM >= 1.37, getter derives state from Capturing/Analysing/Recording."""
+        client = StubClient(zm_version="1.38.0")
+        raw = _make_raw(
+            function="Monitor",  # stale Function column
+            capturing="Always",
+            analysing="Always",
+            recording="OnMotion",
+        )
+        mon = Monitor(client, raw)
+        # Should derive MODECT from new fields, ignoring stale Function
+        assert mon.function == MonitorState.MODECT
+
+    @pytest.mark.parametrize(
+        "state,capturing,analysing,recording",
+        [
+            (MonitorState.NONE, "None", "None", "None"),
+            (MonitorState.MONITOR, "Always", "None", "None"),
+            (MonitorState.MODECT, "Always", "Always", "OnMotion"),
+            (MonitorState.RECORD, "Always", "None", "Always"),
+            (MonitorState.MOCORD, "Always", "Always", "Always"),
+            (MonitorState.NODECT, "Always", "None", "OnMotion"),
+        ],
+    )
+    def test_getter_all_states(self, state, capturing, analysing, recording):
+        """Each classic MonitorState should be derivable from the new fields."""
+        client = StubClient(zm_version="1.38.0")
+        raw = _make_raw(capturing=capturing, analysing=analysing, recording=recording)
+        mon = Monitor(client, raw)
+        assert mon.function == state
+
+    def test_getter_falls_back_to_function_on_unmappable_combination(self):
+        """Unmappable new-field combo falls back to Function column."""
+        client = StubClient(zm_version="1.38.0")
+        raw = _make_raw(
+            function="Monitor",
+            capturing="Ondemand",  # Not in any classic mapping
+            analysing="None",
+            recording="None",
+        )
+        mon = Monitor(client, raw)
+        assert mon.function == MonitorState.MONITOR
+
+    def test_getter_falls_back_when_new_fields_missing(self):
+        """If new fields aren't in the API response, fall back to Function."""
+        client = StubClient(zm_version="1.38.0")
+        raw = _make_raw(function="Modect")  # No new fields
+        mon = Monitor(client, raw)
+        assert mon.function == MonitorState.MODECT
+
+    def test_getter_does_not_fetch(self):
+        """Getter should never make API calls, even on ZM 1.37+."""
+        client = StubClient(zm_version="1.38.0")
+        raw = _make_raw(capturing="Always", analysing="Always", recording="OnMotion")
+        mon = Monitor(client, raw)
+        mon._last_update = 0.0
+        assert mon.function == MonitorState.MODECT
+        assert client._get_state_call_count == 0
+
+    @pytest.mark.parametrize(
+        "state,expected_fields",
+        [
+            (
+                MonitorState.NONE,
+                {
+                    "Monitor[Capturing]": "None",
+                    "Monitor[Analysing]": "None",
+                    "Monitor[Recording]": "None",
+                },
+            ),
+            (
+                MonitorState.MONITOR,
+                {
+                    "Monitor[Capturing]": "Always",
+                    "Monitor[Analysing]": "None",
+                    "Monitor[Recording]": "None",
+                },
+            ),
+            (
+                MonitorState.MODECT,
+                {
+                    "Monitor[Capturing]": "Always",
+                    "Monitor[Analysing]": "Always",
+                    "Monitor[Recording]": "OnMotion",
+                },
+            ),
+            (
+                MonitorState.RECORD,
+                {
+                    "Monitor[Capturing]": "Always",
+                    "Monitor[Analysing]": "None",
+                    "Monitor[Recording]": "Always",
+                },
+            ),
+            (
+                MonitorState.MOCORD,
+                {
+                    "Monitor[Capturing]": "Always",
+                    "Monitor[Analysing]": "Always",
+                    "Monitor[Recording]": "Always",
+                },
+            ),
+            (
+                MonitorState.NODECT,
+                {
+                    "Monitor[Capturing]": "Always",
+                    "Monitor[Analysing]": "None",
+                    "Monitor[Recording]": "OnMotion",
+                },
+            ),
+        ],
+    )
+    def test_setter_posts_new_fields(self, state, expected_fields):
+        """On ZM >= 1.37, setter writes Capturing/Analysing/Recording."""
+        client = StubClient(zm_version="1.38.0")
+        mon = Monitor(client, _make_raw())
+        mon.function = state
+        assert len(client._change_state_calls) == 1
+        url, data = client._change_state_calls[0]
+        assert "monitors/1.json" in url
+        assert data == expected_fields
+
+    def test_setter_does_not_post_function_column(self):
+        """On ZM >= 1.37, setter must NOT write Monitor[Function]."""
+        client = StubClient(zm_version="1.38.0")
+        mon = Monitor(client, _make_raw())
+        mon.function = MonitorState.MODECT
+        _, data = client._change_state_calls[0]
+        assert "Monitor[Function]" not in data
+
+    def test_setter_invalidates_cache(self):
+        """After setting function on ZM 1.37+, cache should be invalidated."""
+        client = StubClient(zm_version="1.38.0")
+        mon = Monitor(client, _make_raw())
+        mon.function = MonitorState.RECORD
+        assert mon._last_update == 0.0
+
+
+class TestDeriveFunction:
+    """Test the _derive_function helper directly."""
+
+    def test_none(self):
+        assert _derive_function("None", "None", "None") == MonitorState.NONE
+
+    def test_none_ignores_analysing_recording(self):
+        """When Capturing=None, result is NONE regardless of other fields."""
+        assert _derive_function("None", "Always", "Always") == MonitorState.NONE
+
+    def test_monitor(self):
+        assert _derive_function("Always", "None", "None") == MonitorState.MONITOR
+
+    def test_modect(self):
+        assert _derive_function("Always", "Always", "OnMotion") == MonitorState.MODECT
+
+    def test_record(self):
+        assert _derive_function("Always", "None", "Always") == MonitorState.RECORD
+
+    def test_mocord(self):
+        assert _derive_function("Always", "Always", "Always") == MonitorState.MOCORD
+
+    def test_nodect(self):
+        assert _derive_function("Always", "None", "OnMotion") == MonitorState.NODECT
+
+    def test_unmappable_returns_none(self):
+        """Ondemand capturing doesn't map to any classic MonitorState."""
+        assert _derive_function("Ondemand", "None", "None") is None
+
+
+class TestIsZm137OrLater:
+    """Test the version check helper."""
+
+    def test_136(self):
+        assert _is_zm_137_or_later("1.36.33") is False
+
+    def test_137(self):
+        assert _is_zm_137_or_later("1.37.0") is True
+
+    def test_1370(self):
+        assert _is_zm_137_or_later("1.37") is True
+
+    def test_138(self):
+        assert _is_zm_137_or_later("1.38.0") is True
+
+    def test_none(self):
+        assert _is_zm_137_or_later(None) is False
+
+    def test_garbage(self):
+        assert _is_zm_137_or_later("not-a-version") is False
+
+
+class TestFunctionToNewFieldsMapping:
+    """Verify the mapping table covers all MonitorState values."""
+
+    def test_all_states_mapped(self):
+        for state in MonitorState:
+            assert state in _FUNCTION_TO_NEW_FIELDS
+
+    def test_all_entries_have_three_fields(self):
+        for state, fields in _FUNCTION_TO_NEW_FIELDS.items():
+            assert set(fields.keys()) == {"Capturing", "Analysing", "Recording"}, (
+                f"{state} missing fields"
+            )
 
 
 # ---------------------------------------------------------------------------

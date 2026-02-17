@@ -106,6 +106,52 @@ class MonitorState(Enum):
     NODECT = "Nodect"
 
 
+# ZM 1.37.12 decomposed the single Function enum into three independent columns:
+# Capturing (None/Ondemand/Always), Analysing (None/Always), Recording (None/OnMotion/Always).
+# The daemon lifecycle now uses Capturing, not Function.
+# See: zoneminder/db/zm_update-1.37.12.sql
+_FUNCTION_TO_NEW_FIELDS: dict[MonitorState, dict[str, str]] = {
+    MonitorState.NONE: {"Capturing": "None", "Analysing": "None", "Recording": "None"},
+    MonitorState.MONITOR: {"Capturing": "Always", "Analysing": "None", "Recording": "None"},
+    MonitorState.MODECT: {"Capturing": "Always", "Analysing": "Always", "Recording": "OnMotion"},
+    MonitorState.RECORD: {"Capturing": "Always", "Analysing": "None", "Recording": "Always"},
+    MonitorState.MOCORD: {"Capturing": "Always", "Analysing": "Always", "Recording": "Always"},
+    MonitorState.NODECT: {"Capturing": "Always", "Analysing": "None", "Recording": "OnMotion"},
+}
+
+# Minimum ZM version that uses the new Capturing/Analysing/Recording fields.
+_ZM_NEW_FIELDS_VERSION = (1, 37)
+
+
+def _derive_function(capturing, analysing, recording):
+    """Derive MonitorState from the new ZM 1.37+ fields.
+
+    Returns None if the combination doesn't map to any classic MonitorState.
+    """
+    if capturing == "None":
+        return MonitorState.NONE
+    if capturing != "Always":
+        # Ondemand or unknown value -- no classic equivalent
+        return None
+    if analysing == "None" and recording == "None":
+        return MonitorState.MONITOR
+    if analysing == "Always" and recording == "OnMotion":
+        return MonitorState.MODECT
+    if analysing == "None" and recording == "Always":
+        return MonitorState.RECORD
+    if analysing == "Always" and recording == "Always":
+        return MonitorState.MOCORD
+    if analysing == "None" and recording == "OnMotion":
+        return MonitorState.NODECT
+    return None
+
+
+def _is_zm_137_or_later(zm_version):
+    """Return True if the ZM version is >= 1.37 (has new monitor fields)."""
+    parsed = _parse_version(zm_version)
+    return parsed is not None and parsed >= _ZM_NEW_FIELDS_VERSION
+
+
 class TimePeriod(Enum):
     """Represents a period of time to check for events."""
 
@@ -206,13 +252,44 @@ class Monitor:
 
     @property
     def function(self) -> MonitorState:
-        """Get the MonitorState of this Monitor."""
-        return MonitorState(self._raw_result["Monitor"]["Function"])
+        """Get the MonitorState of this Monitor.
+
+        On ZM >= 1.37, derives the state from Capturing/Analysing/Recording
+        since the legacy Function column may be stale.
+        """
+        raw_monitor = self._raw_result["Monitor"]
+        if _is_zm_137_or_later(self._client.zm_version):
+            capturing = raw_monitor.get("Capturing")
+            analysing = raw_monitor.get("Analysing")
+            recording = raw_monitor.get("Recording")
+            if capturing is not None and analysing is not None and recording is not None:
+                derived = _derive_function(capturing, analysing, recording)
+                if derived is not None:
+                    return derived
+                _LOGGER.warning(
+                    "Monitor %s has unmappable state "
+                    "(Capturing=%s, Analysing=%s, Recording=%s), "
+                    "falling back to Function column",
+                    self._monitor_id,
+                    capturing,
+                    analysing,
+                    recording,
+                )
+        return MonitorState(raw_monitor["Function"])
 
     @function.setter
     def function(self, new_function):
-        """Set the MonitorState of this Monitor."""
-        self._client.change_state(self._monitor_url, {"Monitor[Function]": new_function.value})
+        """Set the MonitorState of this Monitor.
+
+        On ZM >= 1.37, writes the decomposed Capturing/Analysing/Recording
+        fields instead of the legacy Function column.
+        """
+        if _is_zm_137_or_later(self._client.zm_version):
+            fields = _FUNCTION_TO_NEW_FIELDS[new_function]
+            post_data = {f"Monitor[{k}]": v for k, v in fields.items()}
+        else:
+            post_data = {"Monitor[Function]": new_function.value}
+        self._client.change_state(self._monitor_url, post_data)
         self._last_update = 0.0
 
     @property
