@@ -344,6 +344,83 @@ class TestMonitorIsRecording:
         mon = Monitor(client, _make_raw())
         assert mon.is_recording is True
 
+    def test_uses_alarm_command_helper(self):
+        """is_recording should use _alarm_command('status') internally."""
+        client = StubClient(get_state_return={"status": 2})
+        mon = Monitor(client, _make_raw())
+        assert mon.is_recording is True
+        # Verify get_state was called with the correct alarm status URL
+        assert client._get_state_call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# set_force_alarm_state
+# ---------------------------------------------------------------------------
+
+class TestForceAlarmState:
+    """Test force alarm on/off via the alarm command API."""
+
+    def test_force_alarm_on(self):
+        """set_force_alarm_state(True) should call command:on."""
+        calls = []
+        client = StubClient(get_state_return={"status": "1"})
+        original_get_state = client.get_state
+
+        def tracking_get_state(api_url):
+            calls.append(api_url)
+            return original_get_state(api_url)
+
+        client.get_state = tracking_get_state
+        mon = Monitor(client, _make_raw())
+        mon.set_force_alarm_state(True)
+        assert any("command:on" in c for c in calls)
+
+    def test_force_alarm_off(self):
+        """set_force_alarm_state(False) should call command:off."""
+        calls = []
+        client = StubClient(get_state_return={"status": "1"})
+        original_get_state = client.get_state
+
+        def tracking_get_state(api_url):
+            calls.append(api_url)
+            return original_get_state(api_url)
+
+        client.get_state = tracking_get_state
+        mon = Monitor(client, _make_raw())
+        mon.set_force_alarm_state(False)
+        assert any("command:off" in c for c in calls)
+
+    def test_force_alarm_on_url_contains_monitor_id(self):
+        """The alarm URL should contain the correct monitor ID."""
+        calls = []
+        client = StubClient(get_state_return={"status": "1"})
+        original_get_state = client.get_state
+
+        def tracking_get_state(api_url):
+            calls.append(api_url)
+            return original_get_state(api_url)
+
+        client.get_state = tracking_get_state
+        mon = Monitor(client, _make_raw(mid=42))
+        mon.set_force_alarm_state(True)
+        assert any("id:42" in c for c in calls)
+
+    def test_force_alarm_logs_on_failure(self, caplog):
+        """Warning should be logged when API returns falsy response."""
+        client = StubClient(get_state_return={})
+        mon = Monitor(client, _make_raw())
+        with caplog.at_level("WARNING"):
+            mon.set_force_alarm_state(True)
+        assert "Failed to set force alarm" in caplog.text
+
+    def test_force_alarm_no_warning_on_success(self, caplog):
+        """No warning when API returns a truthy response."""
+        client = StubClient(get_state_return={"status": "1"})
+        mon = Monitor(client, _make_raw())
+        with caplog.at_level("WARNING"):
+            mon.set_force_alarm_state(True)
+        assert "Failed to set force alarm" not in caplog.text
+
 
 # ---------------------------------------------------------------------------
 # is_available

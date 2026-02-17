@@ -351,12 +351,23 @@ class Monitor:
         """Get the still jpeg image url of this Monitor."""
         return self._still_image_url
 
+    def _alarm_command(self, command: str):
+        """Send an alarm command for this monitor.
+
+        Valid commands: 'status', 'on', 'off', 'cancel'.
+        Returns the raw API response dict (empty dict on failure).
+        """
+        return (
+            self._client.get_state(
+                f"api/monitors/alarm/id:{self._monitor_id}/command:{command}.json"
+            )
+            or {}
+        )
+
     @property
     def is_recording(self) -> bool | None:
         """Indicate if this Monitor is currently recording."""
-        status_response = self._client.get_state(
-            f"api/monitors/alarm/id:{self._monitor_id}/command:status.json"
-        )
+        status_response = self._alarm_command("status")
 
         if not status_response:
             _LOGGER.warning("Could not get status for monitor %s.", self._monitor_id)
@@ -370,6 +381,22 @@ class Monitor:
             return int(status) >= states["ALARM"]
         except (ValueError, TypeError):
             return False
+
+    def set_force_alarm_state(self, state: bool) -> None:
+        """Force a monitor into or out of alarm state.
+
+        When forced on, ZoneMinder will begin recording on this monitor
+        regardless of motion detection.  When forced off, the forced alarm
+        is cancelled and the monitor returns to its normal detection mode.
+        """
+        command = "on" if state else "off"
+        response = self._alarm_command(command)
+        if not response:
+            _LOGGER.warning(
+                "Failed to set force alarm %s for monitor %s",
+                command,
+                self._monitor_id,
+            )
 
     @property
     def is_available(self) -> bool:
