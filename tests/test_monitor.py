@@ -222,6 +222,53 @@ class TestMonitorImageUrls:
 
 
 # ---------------------------------------------------------------------------
+# Stream scale & maxfps URL params
+# ---------------------------------------------------------------------------
+
+
+class TestMonitorStreamScaleMaxfps:
+    def test_scale_in_mjpeg_url(self):
+        """scale=50 should appear in MJPEG URL."""
+        mon = Monitor(StubClient(), _make_raw(), scale=50)
+        assert "scale=50" in mon.mjpeg_image_url
+
+    def test_scale_in_still_url(self):
+        """scale=50 should appear in still URL."""
+        mon = Monitor(StubClient(), _make_raw(), scale=50)
+        assert "scale=50" in mon.still_image_url
+
+    def test_maxfps_in_mjpeg_url(self):
+        """maxfps=5.0 should appear in MJPEG URL (mode=jpeg)."""
+        mon = Monitor(StubClient(), _make_raw(), maxfps=5.0)
+        assert "maxfps=5.0" in mon.mjpeg_image_url
+
+    def test_maxfps_not_in_still_url(self):
+        """maxfps should NOT appear in still URL (mode=single)."""
+        mon = Monitor(StubClient(), _make_raw(), maxfps=5.0)
+        assert "maxfps" not in mon.still_image_url
+
+    def test_both_scale_and_maxfps_in_mjpeg(self):
+        """Both params in MJPEG URL when both set."""
+        mon = Monitor(StubClient(), _make_raw(), scale=75, maxfps=10.0)
+        assert "scale=75" in mon.mjpeg_image_url
+        assert "maxfps=10.0" in mon.mjpeg_image_url
+
+    def test_no_scale_maxfps_when_none(self):
+        """Neither param should appear when both are None (backwards compat)."""
+        mon = Monitor(StubClient(), _make_raw())
+        assert "scale=" not in mon.mjpeg_image_url
+        assert "maxfps=" not in mon.mjpeg_image_url
+        assert "scale=" not in mon.still_image_url
+        assert "maxfps=" not in mon.still_image_url
+
+    def test_only_scale_still_url(self):
+        """Still URL should have scale but not maxfps when both set."""
+        mon = Monitor(StubClient(), _make_raw(), scale=25, maxfps=3.0)
+        assert "scale=25" in mon.still_image_url
+        assert "maxfps" not in mon.still_image_url
+
+
+# ---------------------------------------------------------------------------
 # is_recording
 # ---------------------------------------------------------------------------
 

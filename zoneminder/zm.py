@@ -33,6 +33,8 @@ class ZoneMinder:
         server_path=DEFAULT_SERVER_PATH,
         zms_path=DEFAULT_ZMS_PATH,
         verify_ssl=True,
+        stream_scale=None,
+        stream_maxfps=None,
     ) -> None:
         """Create a ZoneMinder API Client."""
         self._server_url = ZoneMinder._build_server_url(server_host, server_path)
@@ -40,6 +42,8 @@ class ZoneMinder:
         self._username = username
         self._password = password
         self._verify_ssl = verify_ssl
+        self._stream_scale: int | None = stream_scale
+        self._stream_maxfps: float | None = stream_maxfps
         self._session = requests.Session()
         self._session.verify = verify_ssl
         self._auth_token: str | None = None
@@ -220,7 +224,14 @@ class ZoneMinder:
         monitors = []
         for raw_result in raw_monitors["monitors"]:
             _LOGGER.debug("Initializing camera %s", raw_result["Monitor"]["Id"])
-            monitors.append(Monitor(self, raw_result))
+            monitors.append(
+                Monitor(
+                    self,
+                    raw_result,
+                    scale=self._stream_scale,
+                    maxfps=self._stream_maxfps,
+                )
+            )
 
         return monitors
 

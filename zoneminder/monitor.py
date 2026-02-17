@@ -195,10 +195,12 @@ class TimePeriod(Enum):
 class Monitor:
     """Represents a Monitor from ZoneMinder."""
 
-    def __init__(self, client, raw_result):
+    def __init__(self, client, raw_result, *, scale=None, maxfps=None):
         """Create a new Monitor."""
         self._client = client
         self._raw_result = raw_result
+        self._scale: int | None = scale
+        self._maxfps: float | None = maxfps
         self._last_update = time.monotonic()
         raw_monitor = raw_result["Monitor"]
         self._monitor_id = int(raw_monitor["Id"])
@@ -404,13 +406,16 @@ class Monitor:
 
     def _build_image_url(self, monitor, mode) -> str:
         """Build and return a ZoneMinder camera image url."""
-        query = urlencode(
-            {
-                "mode": mode,
-                "buffer": monitor["StreamReplayBuffer"],
-                "monitor": monitor["Id"],
-            }
-        )
+        params: dict[str, str | int | float] = {
+            "mode": mode,
+            "buffer": monitor["StreamReplayBuffer"],
+            "monitor": monitor["Id"],
+        }
+        if self._scale is not None:
+            params["scale"] = self._scale
+        if self._maxfps is not None and mode == "jpeg":
+            params["maxfps"] = self._maxfps
+        query = urlencode(params)
         zms_url = self._client.get_zms_url_for_monitor(monitor)
         url = f"{zms_url}?{query}"
         _LOGGER.debug("Monitor %s %s URL (without auth): %s", monitor["Id"], mode, url)
