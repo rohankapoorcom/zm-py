@@ -98,6 +98,7 @@ class TestMonitorFunctionSet:
         try:
             target = MonitorState.MONITOR
             any_monitor.function = target
+            any_monitor.update_monitor()
             result = any_monitor.function
             assert result == target
         finally:

@@ -271,7 +271,7 @@ class TestMonitorIsRecording:
 
 class TestMonitorIsAvailable:
     def _make_available_monitor(self, daemon_status, capture_fps="10.00", has_monitor_status=True):
-        """Build a monitor with patched update_monitor for is_available tests."""
+        """Build a monitor for is_available tests."""
         client = StubClient(get_state_return=daemon_status)
         raw = _make_raw()
         if has_monitor_status:
@@ -279,9 +279,6 @@ class TestMonitorIsAvailable:
         else:
             del raw["Monitor_Status"]
         mon = Monitor(client, raw)
-        # Patch update_monitor to be a no-op since _raw_result is already set
-        # and StubClient can only return one response shape
-        mon.update_monitor = lambda: None
         return mon
 
     def test_available_when_daemon_running_and_fps_nonzero(self):
@@ -306,17 +303,18 @@ class TestMonitorIsAvailable:
         mon = Monitor(client, _make_raw())
         assert mon.is_available is False
 
-    def test_fetches_fresh_data(self):
-        """is_available should call update_monitor to get fresh Monitor_Status."""
+    def test_reads_from_cached_raw_result(self):
+        """BUG-04: is_available reads Monitor_Status from _raw_result without refetching.
+
+        Exactly 1 API call should be made (daemon status only), even with expired TTL.
+        """
         client = StubClient(get_state_return={"status": True})
         raw = _make_raw()
-        raw["Monitor_Status"] = {"CaptureFPS": "0.00"}
+        raw["Monitor_Status"] = {"CaptureFPS": "15.00"}
         mon = Monitor(client, raw)
-        # Simulate update_monitor refreshing _raw_result with new FPS
-        fresh_raw = _make_raw()
-        fresh_raw["Monitor_Status"] = {"CaptureFPS": "15.00"}
-        mon.update_monitor = lambda: setattr(mon, "_raw_result", fresh_raw)
+        mon._last_update = 0.0  # Expire the TTL cache
         assert mon.is_available is True
+        assert client._get_state_call_count == 1  # daemon status only
 
 
 # ---------------------------------------------------------------------------
@@ -368,6 +366,18 @@ class TestMonitorFunction:
         """function getter reads Function from cached raw_result."""
         client = StubClient()
         mon = Monitor(client, _make_raw(function="Modect"))
+        assert mon.function == MonitorState.MODECT
+        assert client._get_state_call_count == 0
+
+    def test_getter_does_not_fetch_even_when_cache_expired(self):
+        """BUG-03 regression: function getter must never call update_monitor().
+
+        Even after the 1s TTL expires, reading function should be a pure read
+        from _raw_result with zero API calls.
+        """
+        client = StubClient()
+        mon = Monitor(client, _make_raw(function="Modect"))
+        mon._last_update = 0.0  # Expire the TTL cache
         assert mon.function == MonitorState.MODECT
         assert client._get_state_call_count == 0
 
@@ -443,7 +453,7 @@ class TestUpdateMonitor:
         assert client._get_state_call_count == 2
 
     def test_function_setter_invalidates_cache(self):
-        """After setting function, next read should re-fetch."""
+        """After setting function, explicit update_monitor() should re-fetch."""
         updated = {
             "monitor": {
                 "Monitor": {"Function": "Record"},
@@ -453,16 +463,14 @@ class TestUpdateMonitor:
         client = StubClient(get_state_return=updated)
         mon = Monitor(client, _make_raw())
 
-        # First read uses constructor cache (no fetch)
-        _ = mon.function
-        assert client._get_state_call_count == 0
-
         # Set function (invalidates cache by setting _last_update = 0.0)
         mon.function = MonitorState.RECORD
+        assert client._get_state_call_count == 0
 
-        # Next read should re-fetch despite being within 1s of construction
-        _ = mon.function
+        # Explicit update_monitor() should re-fetch since cache is invalidated
+        mon.update_monitor()
         assert client._get_state_call_count == 1
+        assert mon.function == MonitorState.RECORD
 
 
 # ---------------------------------------------------------------------------

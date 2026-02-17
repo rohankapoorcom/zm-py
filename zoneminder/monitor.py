@@ -192,8 +192,6 @@ class Monitor:
     @property
     def function(self) -> MonitorState:
         """Get the MonitorState of this Monitor."""
-        self.update_monitor()
-
         return MonitorState(self._raw_result["Monitor"]["Function"])
 
     @function.setter
@@ -247,8 +245,6 @@ class Monitor:
         if not status_response:
             _LOGGER.warning("Could not get availability for monitor %s.", self._monitor_id)
             return False
-
-        self.update_monitor()
 
         # Monitor_Status was only added in ZM 1.32.3
         monitor_status = self._raw_result.get("Monitor_Status", None)
