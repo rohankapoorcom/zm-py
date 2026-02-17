@@ -1,7 +1,8 @@
 """An API Client to interact with ZoneMinder."""
 
+from __future__ import annotations
+
 import logging
-from typing import List, Optional
 from urllib.parse import quote, urljoin
 
 import requests
@@ -38,12 +39,12 @@ class ZoneMinder:
         self._username = username
         self._password = password
         self._verify_ssl = verify_ssl
-        self._cookies = None
-        self._auth_token = None
-        self._zm_version: Optional[str] = None
-        self._servers: Optional[dict[int, Server]] = None
+        self._cookies: requests.cookies.RequestsCookieJar | None = None
+        self._auth_token: str | None = None
+        self._zm_version: str | None = None
+        self._servers: dict[int, Server] | None = None
 
-    def login(self):
+    def login(self) -> bool:
         """Login to the ZoneMinder API."""
         _LOGGER.debug("Attempting to login to ZoneMinder")
 
@@ -76,7 +77,7 @@ class ZoneMinder:
 
         return self._legacy_auth()
 
-    def _legacy_auth(self):
+    def _legacy_auth(self) -> bool:
         login_post = {"view": "console", "action": "login"}
         if self._username:
             login_post["username"] = self._username
@@ -168,7 +169,7 @@ class ZoneMinder:
             _LOGGER.exception("Unable to connect to ZoneMinder")
             return {}
 
-    def get_monitors(self) -> List[Monitor]:
+    def get_monitors(self) -> list[Monitor]:
         """Get a list of Monitors from the ZoneMinder API."""
         raw_monitors = self._zm_request("get", ZoneMinder.MONITOR_URL)
         if not raw_monitors:
@@ -186,7 +187,7 @@ class ZoneMinder:
 
         return monitors
 
-    def get_run_states(self) -> List[RunState]:
+    def get_run_states(self) -> list[RunState]:
         """Get a list of RunStates from the ZoneMinder API."""
         raw_states = self.get_state("api/states.json")
         if not raw_states:
@@ -205,7 +206,7 @@ class ZoneMinder:
 
         return run_states
 
-    def get_servers(self) -> List[Server]:
+    def get_servers(self) -> list[Server]:
         """Get a list of Servers from the ZoneMinder API."""
         raw_servers = self.get_state(ZoneMinder.SERVERS_URL)
         if not raw_servers:
@@ -294,16 +295,15 @@ class ZoneMinder:
 
         return server.base_url
 
-    def get_active_state(self) -> Optional[str]:
+    def get_active_state(self) -> str | None:
         """Get the name of the active run state from the ZoneMinder API."""
         for state in self.get_run_states():
             if state.active:
                 return state.name
         return None
 
-    def set_active_state(self, state_name):
-        """
-        Set the ZoneMinder run state to the given state name, via ZM API.
+    def set_active_state(self, state_name) -> dict:
+        """Set the ZoneMinder run state to the given state name, via ZM API.
 
         Note that this is a long-running API call; ZoneMinder changes the state
         of each camera in turn, and this GET does not receive a response until
@@ -313,7 +313,7 @@ class ZoneMinder:
         """
         _LOGGER.info("Setting ZoneMinder run state to state %s", state_name)
         return self._zm_request(
-            "GET", f"api/states/change/{quote(state_name, safe='')}.json", timeout=120
+            "get", f"api/states/change/{quote(state_name, safe='')}.json", timeout=120
         )
 
     def get_zms_url(self) -> str:
@@ -348,7 +348,7 @@ class ZoneMinder:
             return False
 
     @property
-    def zm_version(self) -> Optional[str]:
+    def zm_version(self) -> str | None:
         """Get the ZoneMinder server version string, e.g. '1.38.0'."""
         return self._zm_version
 
@@ -379,7 +379,7 @@ class ZoneMinder:
         base_url = self.get_server_url_for_monitor(monitor.raw_monitor)
         result = monitor.ptz_control_command(direction, self._auth_token, base_url, self._cookies)
         if result:
-            _LOGGER.info("Success to move camera to %s", direction)
+            _LOGGER.info("Successfully moved camera to %s", direction)
         else:
             _LOGGER.error("Failed to move camera to %s", direction)
         return result

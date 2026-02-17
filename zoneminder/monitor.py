@@ -1,13 +1,13 @@
 """Classes that allow interacting with specific ZoneMinder monitors."""
 
+from __future__ import annotations
+
 from enum import Enum
 import logging
 import time
-from typing import Optional
 from urllib.parse import urlencode
 
 import requests
-from requests import post
 
 from .exceptions import ControlTypeError, MonitorControlTypeError
 
@@ -219,7 +219,7 @@ class Monitor:
         return self._still_image_url
 
     @property
-    def is_recording(self) -> Optional[bool]:
+    def is_recording(self) -> bool | None:
         """Indicate if this Monitor is currently recording."""
         status_response = self._client.get_state(
             f"api/monitors/alarm/id:{self._monitor_id}/command:status.json"
@@ -257,7 +257,7 @@ class Monitor:
 
         return status_response.get("status", False) and capture_fps != "0.00"
 
-    def get_events(self, time_period, include_archived=False) -> Optional[int]:
+    def get_events(self, time_period, include_archived=False) -> int | None:
         """Get the number of events that have occurred on this Monitor.
 
         Specifically only gets events that have occurred within the TimePeriod
@@ -317,7 +317,7 @@ class Monitor:
             params["token"] = token
 
         try:
-            req = post(
+            req = requests.post(
                 url=ptz_url,
                 params=params,
                 cookies=cookies,

@@ -243,7 +243,7 @@ class TestMoveMonitor:
         raw = _monitor_raw(controllable="1" if controllable else "0")
         return Monitor(_client(), raw)
 
-    @patch("zoneminder.monitor.post")
+    @patch("zoneminder.monitor.requests.post")
     def test_delegates_to_ptz_control_command(self, mock_post):
         mock_post.return_value.ok = True
         c = _client()
@@ -268,7 +268,7 @@ class TestMoveMonitor:
         with pytest.raises(MonitorControlTypeError):
             c.move_monitor(mon, "right")
 
-    @patch("zoneminder.monitor.post")
+    @patch("zoneminder.monitor.requests.post")
     def test_returns_bool_on_success(self, mock_post):
         """move_monitor should return True on success."""
         mock_post.return_value.ok = True
@@ -278,7 +278,7 @@ class TestMoveMonitor:
         result = c.move_monitor(mon, "right")
         assert result is True
 
-    @patch("zoneminder.monitor.post")
+    @patch("zoneminder.monitor.requests.post")
     def test_passes_cookies_to_ptz(self, mock_post):
         """move_monitor should forward session cookies for legacy auth."""
         mock_post.return_value.ok = True
@@ -472,7 +472,7 @@ class TestMultiServerPtzRouting:
             result = c.get_server_url_for_monitor(raw_monitor)
         assert result == "https://zm2.test/zm/"
 
-    @patch("zoneminder.monitor.post")
+    @patch("zoneminder.monitor.requests.post")
     def test_move_monitor_uses_server_url(self, mock_post):
         """move_monitor should resolve the per-server URL for PTZ."""
         mock_post.return_value.ok = True
