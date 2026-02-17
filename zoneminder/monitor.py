@@ -5,11 +5,15 @@ from __future__ import annotations
 from enum import Enum
 import logging
 import time
+from typing import TYPE_CHECKING
 from urllib.parse import urlencode
 
 import requests
 
 from .exceptions import ControlTypeError, MonitorControlTypeError
+
+if TYPE_CHECKING:
+    from zoneminder.zm import ZoneMinder
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -195,12 +199,19 @@ class TimePeriod(Enum):
 class Monitor:
     """Represents a Monitor from ZoneMinder."""
 
-    def __init__(self, client, raw_result, *, scale=None, maxfps=None):
+    def __init__(
+        self,
+        client: ZoneMinder,
+        raw_result: dict,
+        *,
+        scale: int | None = None,
+        maxfps: float | None = None,
+    ) -> None:
         """Create a new Monitor."""
         self._client = client
         self._raw_result = raw_result
-        self._scale: int | None = scale
-        self._maxfps: float | None = maxfps
+        self._scale = scale
+        self._maxfps = maxfps
         self._last_update = time.monotonic()
         raw_monitor = raw_result["Monitor"]
         self._monitor_id = int(raw_monitor["Id"])
