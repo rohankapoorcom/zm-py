@@ -202,8 +202,8 @@ def raw_session(zm_client: ZoneMinder):
     s.verify = zm_client._verify_ssl
     if zm_client._auth_token:
         s.params = {"token": zm_client._auth_token}
-    elif zm_client._cookies:
-        s.cookies = zm_client._cookies
+    elif zm_client._session.cookies:
+        s.cookies = zm_client._session.cookies
     return s
 
 

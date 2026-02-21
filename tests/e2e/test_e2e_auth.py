@@ -27,7 +27,7 @@ class TestLogin:
         """After login(), the client should have an auth token or cookies."""
         zm_client_fresh.login()
         has_token = zm_client_fresh._auth_token is not None
-        has_cookies = zm_client_fresh._cookies is not None
+        has_cookies = len(zm_client_fresh._session.cookies) > 0
         assert has_token or has_cookies, (
             "Expected either JWT token or session cookies after login"
         )
