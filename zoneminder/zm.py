@@ -474,3 +474,23 @@ class ZoneMinder:
         else:
             _LOGGER.error("Failed to move camera to %s", direction)
         return result
+
+    def goto_preset(self, monitor: Monitor, preset: int) -> bool:
+        """Move camera to a numbered preset position."""
+        base_url = self.get_server_url_for_monitor(monitor.raw_monitor)
+        result = monitor.preset_command(preset, self._auth_token, base_url)
+        if result:
+            _LOGGER.info("Successfully moved camera to preset %d", preset)
+        else:
+            _LOGGER.error("Failed to move camera to preset %d", preset)
+        return result
+
+    def goto_home(self, monitor: Monitor) -> bool:
+        """Move camera to the home position."""
+        base_url = self.get_server_url_for_monitor(monitor.raw_monitor)
+        result = monitor.home_command(self._auth_token, base_url)
+        if result:
+            _LOGGER.info("Successfully moved camera to home position")
+        else:
+            _LOGGER.error("Failed to move camera to home position")
+        return result

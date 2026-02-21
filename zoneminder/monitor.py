@@ -487,3 +487,59 @@ class Monitor:
             _LOGGER.exception("Unable to connect to ZoneMinder for PTZ control")
             return False
         return bool(req.ok)
+
+    def preset_command(
+        self, preset: int, token: str | None, base_url: str, cookies: dict | None = None
+    ) -> bool:
+        """Move camera to a numbered preset position."""
+        if not self.controllable:
+            raise MonitorControlTypeError()
+
+        ptz_url = f"{base_url}index.php"
+        params: dict[str, str | int] = {
+            "view": "request",
+            "request": "control",
+            "id": self.id,
+            "control": f"presetGoto{preset}",
+        }
+        if token:
+            params["token"] = token
+
+        try:
+            req = self._client._session.post(  # pylint: disable=protected-access
+                url=ptz_url,
+                params=params,
+                cookies=cookies,
+                timeout=10,
+            )
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            _LOGGER.exception("Unable to connect to ZoneMinder for preset control")
+            return False
+        return bool(req.ok)
+
+    def home_command(self, token: str | None, base_url: str, cookies: dict | None = None) -> bool:
+        """Move camera to the home position."""
+        if not self.controllable:
+            raise MonitorControlTypeError()
+
+        ptz_url = f"{base_url}index.php"
+        params: dict[str, str | int] = {
+            "view": "request",
+            "request": "control",
+            "id": self.id,
+            "control": "presetHome",
+        }
+        if token:
+            params["token"] = token
+
+        try:
+            req = self._client._session.post(  # pylint: disable=protected-access
+                url=ptz_url,
+                params=params,
+                cookies=cookies,
+                timeout=10,
+            )
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            _LOGGER.exception("Unable to connect to ZoneMinder for home control")
+            return False
+        return bool(req.ok)

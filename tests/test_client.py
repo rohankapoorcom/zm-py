@@ -331,6 +331,118 @@ class TestMoveMonitor:
         c._session.post.assert_called_once()
 
 
+# ---------------------------------------------------------------------------
+# goto_preset
+# ---------------------------------------------------------------------------
+
+class TestGotoPreset:
+    def _make_monitor(self, controllable=True):
+        raw = _monitor_raw(controllable="1" if controllable else "0")
+        return Monitor(_client(), raw)
+
+    def test_delegates_to_preset_command(self):
+        c = _client()
+        c._auth_token = "test-token"
+        c._session = MagicMock()
+        c._session.post.return_value = MagicMock(ok=True)
+        mon = Monitor(c, _monitor_raw(controllable="1"))
+        c.goto_preset(mon, 3)
+        c._session.post.assert_called_once()
+
+    def test_preset_params_contain_preset_number(self):
+        c = _client()
+        c._auth_token = "tok"
+        c._session = MagicMock()
+        c._session.post.return_value = MagicMock(ok=True)
+        mon = Monitor(c, _monitor_raw(controllable="1"))
+        c.goto_preset(mon, 3)
+        call_kwargs = c._session.post.call_args
+        assert call_kwargs.kwargs["params"]["control"] == "presetGoto3"
+
+    def test_raises_on_non_controllable(self):
+        c = _client()
+        c._auth_token = "tok"
+        mon = self._make_monitor(controllable=False)
+        with pytest.raises(MonitorControlTypeError):
+            c.goto_preset(mon, 1)
+
+    def test_returns_bool_on_success(self):
+        c = _client()
+        c._auth_token = "tok"
+        c._session = MagicMock()
+        c._session.post.return_value = MagicMock(ok=True)
+        mon = Monitor(c, _monitor_raw(controllable="1"))
+        result = c.goto_preset(mon, 5)
+        assert result is True
+
+    def test_returns_false_on_connection_error(self):
+        c = _client()
+        c._auth_token = "tok"
+        c._session = MagicMock()
+        c._session.post.side_effect = requests.exceptions.ConnectionError("refused")
+        mon = Monitor(c, _monitor_raw(controllable="1"))
+        result = c.goto_preset(mon, 1)
+        assert result is False
+
+
+# ---------------------------------------------------------------------------
+# goto_home
+# ---------------------------------------------------------------------------
+
+class TestGotoHome:
+    def _make_monitor(self, controllable=True):
+        raw = _monitor_raw(controllable="1" if controllable else "0")
+        return Monitor(_client(), raw)
+
+    def test_home_command_sends_preset_home(self):
+        c = _client()
+        c._auth_token = "tok"
+        c._session = MagicMock()
+        c._session.post.return_value = MagicMock(ok=True)
+        mon = Monitor(c, _monitor_raw(controllable="1"))
+        c.goto_home(mon)
+        call_kwargs = c._session.post.call_args
+        assert call_kwargs.kwargs["params"]["control"] == "presetHome"
+
+    def test_raises_on_non_controllable(self):
+        c = _client()
+        c._auth_token = "tok"
+        mon = self._make_monitor(controllable=False)
+        with pytest.raises(MonitorControlTypeError):
+            c.goto_home(mon)
+
+    def test_returns_bool_on_success(self):
+        c = _client()
+        c._auth_token = "tok"
+        c._session = MagicMock()
+        c._session.post.return_value = MagicMock(ok=True)
+        mon = Monitor(c, _monitor_raw(controllable="1"))
+        result = c.goto_home(mon)
+        assert result is True
+
+    def test_returns_false_on_connection_error(self):
+        c = _client()
+        c._auth_token = "tok"
+        c._session = MagicMock()
+        c._session.post.side_effect = requests.exceptions.ConnectionError("refused")
+        mon = Monitor(c, _monitor_raw(controllable="1"))
+        result = c.goto_home(mon)
+        assert result is False
+
+    def test_uses_server_url_for_multi_server(self):
+        """goto_home should resolve the per-server URL."""
+        c = _client()
+        c._auth_token = "tok"
+        c._session = MagicMock()
+        c._session.post.return_value = MagicMock(ok=True)
+        raw = {"servers": [_server_raw(2, "Srv2", hostname="zm2.test", protocol="https")]}
+        with patch.object(c, "get_state", return_value=raw):
+            mon = Monitor(c, _monitor_raw(controllable="1", server_id="2"))
+            c.goto_home(mon)
+        call_kwargs = c._session.post.call_args
+        assert call_kwargs.kwargs["url"] == "https://zm2.test/zm/index.php"
+
+
 class TestStaleTokenRetry:
     """Verify _zm_request recomputes token suffix after login() refreshes the token."""
 
