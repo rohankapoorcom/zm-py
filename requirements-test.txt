@@ -1,14 +1,14 @@
 # linters such as flake8 and pylint should be pinned, as new releases
 # make new things fail. Manually update these pins when pulling in a
 # new version
-black==26.1.0
+black==26.3.1
 flake8-docstrings==1.7.0
 flake8==7.3.0
 isort==5.13.2
 mypy==1.19.1
 pydocstyle==6.3.0
 pylint==4.0.4
-pytest==9.0.2
+pytest==9.0.3
 types-requests==2.32.4.20260107
 poetry
 tox
