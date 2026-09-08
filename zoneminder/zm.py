@@ -223,6 +223,12 @@ class ZoneMinder:
 
         monitors = []
         for raw_result in raw_monitors["monitors"]:
+            # ZoneMinder >= 1.37/1.38 may retain deleted monitors
+            # as soft-deleted database records. Older releases do not
+            # expose the Deleted field.
+            if str(raw_result["Monitor"].get("Deleted", "0")).lower() in ("1", "true"):
+                continue
+
             _LOGGER.debug("Initializing camera %s", raw_result["Monitor"]["Id"])
             monitors.append(
                 Monitor(
