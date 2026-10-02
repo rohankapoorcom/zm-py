@@ -1046,6 +1046,18 @@ class TestPtzControlCommand:
         assert params["view"] == "request"
         assert params["request"] == "control"
 
+    def test_params_contain_pan_and_tilt_speed(self):
+        """Every move sends both speeds; ZM drops the tilt axis without yge."""
+        client = StubClient()
+        client._session.post.return_value = MagicMock(ok=True)
+        mon = Monitor(client, _make_raw(controllable="1"))
+        for direction in ("right", "left", "up", "down",
+                          "up-left", "up-right", "down-left", "down-right"):
+            mon.ptz_control_command(direction, "tok", "http://zm.test/zm/")
+            params = client._session.post.call_args.kwargs["params"]
+            assert params["xge"] == 43, direction
+            assert params["yge"] == 43, direction
+
     def test_all_directions(self):
         """All 8 directions should succeed."""
         client = StubClient()
