@@ -471,7 +471,11 @@ class Monitor:
             "request": "control",
             "id": self.id,
             "control": ControlType.from_move(direction).value,
+            # Pan and tilt speed in percent. ZoneMinder only passes a tilt speed
+            # to the control module when yge is set; without it, up/down moves
+            # reach the camera with speed 0 (a stop).
             "xge": 43,
+            "yge": 43,
         }
         if token:
             params["token"] = token
