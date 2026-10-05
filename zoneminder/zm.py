@@ -53,7 +53,11 @@ class ZoneMinder:
         self._event_cache: dict[tuple, tuple[float, dict | None]] = {}
 
     def login(self) -> bool:
-        """Login to the ZoneMinder API."""
+        """Login to the ZoneMinder API.
+
+        Returns False when the credentials are rejected. Raises
+        requests.exceptions.ConnectionError or Timeout when the server cannot be reached.
+        """
         _LOGGER.debug("Attempting to login to ZoneMinder")
         # Clear any stale token before re-auth.  If JWT auth fails and we
         # fall back to legacy session cookies, a leftover token would be
@@ -67,15 +71,12 @@ class ZoneMinder:
         if self._password:
             login_post["pass"] = self._password
 
-        try:
-            req = self._session.post(
-                urljoin(self._server_url, "api/host/login.json"),
-                data=login_post,
-                timeout=ZoneMinder.DEFAULT_TIMEOUT,
-            )
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-            _LOGGER.exception("Unable to connect to ZoneMinder during login")
-            return False
+        # Connection errors propagate so callers can tell them from bad credentials.
+        req = self._session.post(
+            urljoin(self._server_url, "api/host/login.json"),
+            data=login_post,
+            timeout=ZoneMinder.DEFAULT_TIMEOUT,
+        )
 
         if req.ok:
             try:
@@ -97,29 +98,21 @@ class ZoneMinder:
         if self._password:
             login_post["password"] = self._password
 
-        try:
-            req = self._session.post(
-                urljoin(self._server_url, "index.php"),
-                data=login_post,
-                timeout=ZoneMinder.DEFAULT_TIMEOUT,
-            )
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-            _LOGGER.exception("Unable to connect to ZoneMinder during legacy login")
-            return False
+        req = self._session.post(
+            urljoin(self._server_url, "index.php"),
+            data=login_post,
+            timeout=ZoneMinder.DEFAULT_TIMEOUT,
+        )
 
         # Session stores cookies automatically from the login response.
 
         # Login calls returns a 200 response on both failure and success.
         # The only way to tell if you logged in correctly is to issue an api
         # call.
-        try:
-            req = self._session.get(
-                urljoin(self._server_url, "api/host/getVersion.json"),
-                timeout=ZoneMinder.DEFAULT_TIMEOUT,
-            )
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-            _LOGGER.exception("Unable to connect to ZoneMinder during legacy login verification")
-            return False
+        req = self._session.get(
+            urljoin(self._server_url, "api/host/getVersion.json"),
+            timeout=ZoneMinder.DEFAULT_TIMEOUT,
+        )
 
         if not req.ok:
             _LOGGER.error("Connection error logging into ZoneMinder")
