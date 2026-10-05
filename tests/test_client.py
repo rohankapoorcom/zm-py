@@ -501,29 +501,36 @@ class TestRetryExhaustion:
 
 
 class TestLoginConnectionError:
-    """Verify login() returns False on ConnectionError instead of crashing."""
+    """Verify login() lets connection errors through, so callers can tell them from bad auth."""
 
-    def test_login_returns_false_on_connection_error(self):
-        """login() should catch ConnectionError and return False."""
+    @pytest.mark.parametrize(
+        "error",
+        [requests.exceptions.ConnectionError("refused"), requests.exceptions.Timeout("slow")],
+    )
+    def test_login_raises_on_connection_error(self, error):
+        """login() should raise when the server cannot be reached."""
         c = _client()
         c._session = MagicMock()
-        c._session.post.side_effect = requests.exceptions.ConnectionError("refused")
-        assert c.login() is False
+        c._session.post.side_effect = error
+        with pytest.raises(type(error)):
+            c.login()
 
     def test_legacy_auth_post_connection_error(self):
-        """_legacy_auth() should catch ConnectionError on the POST."""
+        """_legacy_auth() should raise ConnectionError on the POST."""
         c = _client()
         c._session = MagicMock()
         c._session.post.side_effect = requests.exceptions.ConnectionError("refused")
-        assert c._legacy_auth() is False
+        with pytest.raises(requests.exceptions.ConnectionError):
+            c._legacy_auth()
 
     def test_legacy_auth_get_connection_error(self):
-        """_legacy_auth() should catch ConnectionError on the verification GET."""
+        """_legacy_auth() should raise ConnectionError on the verification GET."""
         c = _client()
         c._session = MagicMock()
         c._session.post.return_value = MagicMock(cookies={})
         c._session.get.side_effect = requests.exceptions.ConnectionError("refused")
-        assert c._legacy_auth() is False
+        with pytest.raises(requests.exceptions.ConnectionError):
+            c._legacy_auth()
 
 
 # ---------------------------------------------------------------------------
