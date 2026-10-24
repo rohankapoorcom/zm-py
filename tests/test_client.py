@@ -8,6 +8,7 @@ URL building tests remain in test_zm.py (the original upstream tests).
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -580,6 +581,16 @@ class TestMultiServerZmsRouting:
         c = _client()
         raw_monitor = {"Id": "1"}
         assert c.get_zms_url_for_monitor(raw_monitor) == c.get_zms_url()
+
+    @pytest.mark.parametrize("server_id", [None, ""])
+    def test_null_server_id_returns_main_zms_quietly(self, server_id, caplog):
+        """Single-server installs leave ServerId NULL; that is not invalid."""
+        c = _client()
+        raw_monitor = {"Id": "1", "ServerId": server_id}
+        with caplog.at_level(logging.WARNING):
+            assert c.get_zms_url_for_monitor(raw_monitor) == c.get_zms_url()
+            assert c.get_server_url_for_monitor(raw_monitor) == c._server_url
+        assert not caplog.records
 
     def test_known_server_returns_server_zms(self):
         c = _client()
