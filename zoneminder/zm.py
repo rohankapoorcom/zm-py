@@ -281,10 +281,11 @@ class ZoneMinder:
     def get_zms_url_for_monitor(self, raw_monitor) -> str:
         """Resolve the correct ZMS URL for a monitor based on its ServerId.
 
-        Falls back to the main client ZMS URL when ServerId is missing, "0",
-        or refers to an unknown server.
+        Falls back to the main client ZMS URL when ServerId is missing, null,
+        "0", or refers to an unknown server.
         """
-        server_id_str = raw_monitor.get("ServerId", "0")
+        # A single-server install leaves ServerId NULL, which the API sends as null.
+        server_id_str = raw_monitor.get("ServerId") or "0"
         try:
             server_id = int(server_id_str)
         except (ValueError, TypeError):
@@ -314,9 +315,10 @@ class ZoneMinder:
         """Resolve the correct base URL for a monitor based on its ServerId.
 
         Used for PTZ commands and other control requests. Falls back to the
-        main client server URL when ServerId is missing, "0", or unknown.
+        main client server URL when ServerId is missing, null, "0", or unknown.
         """
-        server_id_str = raw_monitor.get("ServerId", "0")
+        # A single-server install leaves ServerId NULL, which the API sends as null.
+        server_id_str = raw_monitor.get("ServerId") or "0"
         try:
             server_id = int(server_id_str)
         except (ValueError, TypeError):
