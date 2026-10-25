@@ -1,10 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.5.9 (2026-10-25)
 
 ### Behaviour change
 
-- On ZoneMinder 1.37+, `Monitor.function` returns `None` when `Capturing`/`Analysing`/`Recording` have no classic equivalent (for example `Ondemand` capture, or analysing without recording), instead of the `Function` column. ZoneMinder no longer updates that column, so it reported a stale mode. The warning is logged once per monitor and combination instead of on every read. Read `capturing`, `analysing` and `recording` for the full state.
+- On ZoneMinder 1.37+, `Monitor.function` returns `None` when `Capturing`/`Analysing`/`Recording` have no classic equivalent (for example `Ondemand` capture, or analysing without recording), instead of the `Function` column. ZoneMinder no longer updates that column, so it reported a stale mode. The warning is logged once per monitor and combination instead of on every read. Read `capturing`, `analysing` and `recording` for the full state. (#88)
+
+[Full diff](https://github.com/rohankapoorcom/zm-py/compare/v0.5.8...v0.5.9)
 
 ## 0.5.8 (2026-10-25)
 

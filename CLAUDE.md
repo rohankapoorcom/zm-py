@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-zm-py is a lightweight Python API client for ZoneMinder, built specifically for the Home Assistant ZoneMinder integration. It is in **maintenance mode** — bug fixes and compatibility updates are accepted; new features are not planned. Published as `zm-py` on PyPI (v0.5.8). Only runtime dependency is `requests>=2.32.2`.
+zm-py is a lightweight Python API client for ZoneMinder, built specifically for the Home Assistant ZoneMinder integration. It is in **maintenance mode** — bug fixes and compatibility updates are accepted; new features are not planned. Published as `zm-py` on PyPI (v0.5.9). Only runtime dependency is `requests>=2.32.2`.
 
 ## Commands
 
