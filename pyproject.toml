@@ -27,6 +27,9 @@ packages = [
     {include = "tests", format = "sdist"}
 ]
 
+[tool.poetry.urls]
+Changelog = "https://github.com/rohankapoorcom/zm-py/blob/develop/CHANGELOG.md"
+
 [tool.poetry.dependencies]
 python = "^3.13"
 requests = ">=2.32.2"

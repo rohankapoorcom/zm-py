@@ -89,3 +89,11 @@ controllable_monitors = [m for m in monitors if m.controllable]
 for monitor in controllable_monitors:
     zm_client.move_monitor(monitor, "right")
 ```
+
+## Releasing
+
+1. Bump `version` in `pyproject.toml` and move the "Unreleased" notes in `CHANGELOG.md` under the new version.
+2. Merge to `develop`.
+3. Publish a GitHub release with the tag `vX.Y.Z`, matching the version.
+
+The [release workflow](.github/workflows/release.yml) builds the sdist and wheel and publishes them to PyPI through trusted publishing, with attestations.
