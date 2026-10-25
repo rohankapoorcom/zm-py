@@ -625,17 +625,41 @@ class TestMonitorFunctionZm137:
         mon = Monitor(client, raw)
         assert mon.function == state
 
-    def test_getter_falls_back_to_function_on_unmappable_combination(self):
-        """Unmappable new-field combo falls back to Function column."""
+    @pytest.mark.parametrize(
+        "capturing,analysing,recording",
+        [
+            ("Ondemand", "None", "None"),
+            ("Always", "Always", "None"),  # analyse without recording
+        ],
+    )
+    def test_getter_returns_none_on_unmappable_combination(self, capturing, analysing, recording):
+        """Unmappable new-field combo returns None, not the stale Function column."""
         client = StubClient(zm_version="1.38.0")
         raw = _make_raw(
-            function="Monitor",
-            capturing="Ondemand",  # Not in any classic mapping
-            analysing="None",
-            recording="None",
+            function="Modect",  # stale: ZM no longer writes it
+            capturing=capturing,
+            analysing=analysing,
+            recording=recording,
         )
         mon = Monitor(client, raw)
-        assert mon.function == MonitorState.MONITOR
+        assert mon.function is None
+
+    def test_getter_warns_once_per_unmappable_combination(self, caplog):
+        """Repeated reads of the same unmappable state log a single warning."""
+        client = StubClient(zm_version="1.38.0")
+        unmapped = _make_raw(capturing="Always", analysing="Always", recording="None")
+        mocord = _make_raw(capturing="Always", analysing="Always", recording="Always")
+        mon = Monitor(client, unmapped)
+        with caplog.at_level("WARNING"):
+            for _ in range(3):
+                assert mon.function is None
+            assert caplog.text.count("no classic Function equivalent") == 1
+
+            mon._raw_result = mocord
+            assert mon.function == MonitorState.MOCORD
+            mon._raw_result = unmapped
+            assert mon.function is None
+            assert caplog.text.count("no classic Function equivalent") == 2
 
     def test_getter_falls_back_when_new_fields_missing(self):
         """If new fields aren't in the API response, fall back to Function."""

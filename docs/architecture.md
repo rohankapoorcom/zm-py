@@ -90,7 +90,7 @@ flowchart TD
     D -->|No| F["Fall back to Function column"]
     E --> G{"Mapped successfully?"}
     G -->|Yes| H["Return derived MonitorState"]
-    G -->|No| F
+    G -->|No| N["Return None (no classic equivalent)"]
     B -->|No| F
     F --> I["Return MonitorState(Function)"]
 ```

@@ -213,6 +213,7 @@ class Monitor:
         self._scale = scale
         self._maxfps = maxfps
         self._last_update = time.monotonic()
+        self._unmapped_fields: tuple[str, str, str] | None = None
         raw_monitor = raw_result["Monitor"]
         self._monitor_id = int(raw_monitor["Id"])
         self._monitor_url = f"api/monitors/{self._monitor_id}.json"
@@ -264,30 +265,34 @@ class Monitor:
         self._last_update = time.monotonic()
 
     @property
-    def function(self) -> MonitorState:
+    def function(self) -> MonitorState | None:
         """Get the MonitorState of this Monitor.
 
         On ZM >= 1.37, derives the state from Capturing/Analysing/Recording
-        since the legacy Function column may be stale.
+        since the legacy Function column may be stale. Returns None when
+        those fields have no classic equivalent (e.g. Ondemand capture, or
+        analysing without recording); read capturing/analysing/recording.
         """
         raw_monitor = self._raw_result["Monitor"]
         if _is_zm_137_or_later(self._client.zm_version):
-            capturing = raw_monitor.get("Capturing")
-            analysing = raw_monitor.get("Analysing")
-            recording = raw_monitor.get("Recording")
-            if capturing is not None and analysing is not None and recording is not None:
-                derived = _derive_function(capturing, analysing, recording)
-                if derived is not None:
-                    return derived
-                _LOGGER.warning(
-                    "Monitor %s has unmappable state "
-                    "(Capturing=%s, Analysing=%s, Recording=%s), "
-                    "falling back to Function column",
-                    self._monitor_id,
-                    capturing,
-                    analysing,
-                    recording,
-                )
+            fields = (
+                raw_monitor.get("Capturing"),
+                raw_monitor.get("Analysing"),
+                raw_monitor.get("Recording"),
+            )
+            if None not in fields:
+                derived = _derive_function(*fields)
+                if derived is None and fields != self._unmapped_fields:
+                    # ZM doesn't keep the Function column in step with these
+                    # fields, so it can't stand in. Log once per combination.
+                    _LOGGER.warning(
+                        "Monitor %s state (Capturing=%s, Analysing=%s, Recording=%s) "
+                        "has no classic Function equivalent",
+                        self._monitor_id,
+                        *fields,
+                    )
+                self._unmapped_fields = fields if derived is None else None
+                return derived
         return MonitorState(raw_monitor["Function"])
 
     @function.setter
