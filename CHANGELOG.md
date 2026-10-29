@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Behaviour change
+
+- `login()` raises `requests.ConnectionError` when ZoneMinder answers with a 5xx or 429, instead of returning `False`. Home Assistant already catches this, so an outage no longer looks like a wrong password. The exception's `response` holds the HTTP response.
+- `login()` returns `False` on a 401 from `api/host/login.json` without retrying through legacy `index.php` login, so a wrong password is only sent once. Other 4xx responses still fall back to legacy login.
+- `_zm_request` only logs in again after a 401 or 403. Other failures (404, 5xx) return `{}` straight away instead of logging in and retrying.
+
+### Bug fixes
+
+- `login()` no longer raises `JSONDecodeError`, `TypeError` or `AttributeError` when a login response isn't a JSON object, such as an HTML page from a proxy. A malformed JWT response falls back to legacy login, and a malformed `getVersion` response returns `False`.
+- Login failures log the HTTP status, and a rejected password no longer logs "Connection error logging into ZoneMinder".
+
 ## 0.5.9 (2026-10-25)
 
 ### Behaviour change

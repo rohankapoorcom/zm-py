@@ -15,6 +15,27 @@ from zoneminder.server import Server
 _LOGGER = logging.getLogger(__name__)
 
 
+def _raise_if_unavailable(req: requests.Response) -> None:
+    """Raise ConnectionError when the server answered but cannot serve requests.
+
+    Server errors and rate limits mean ZoneMinder is unavailable, not that the
+    credentials are wrong, so callers should treat them like a refused connection.
+    """
+    if req.status_code >= 500 or req.status_code == 429:
+        raise requests.exceptions.ConnectionError(
+            f"ZoneMinder returned HTTP {req.status_code}", response=req
+        )
+
+
+def _json_object(req: requests.Response) -> dict | None:
+    """Return the response body as a dict, or None if it isn't a JSON object."""
+    try:
+        data = req.json()
+    except ValueError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
 class ZoneMinder:
     """The ZoneMinder API client itself. Create one of these to begin."""
 
@@ -56,7 +77,8 @@ class ZoneMinder:
         """Login to the ZoneMinder API.
 
         Returns False when the credentials are rejected. Raises
-        requests.exceptions.ConnectionError or Timeout when the server cannot be reached.
+        requests.exceptions.ConnectionError or Timeout when the server cannot be reached
+        or answers with a server error (5xx) or rate limit (429).
         """
         _LOGGER.debug("Attempting to login to ZoneMinder")
         # Clear any stale token before re-auth.  If JWT auth fails and we
@@ -79,15 +101,21 @@ class ZoneMinder:
         )
 
         if req.ok:
-            try:
-                login_data = req.json()
+            login_data = _json_object(req)
+            if login_data and login_data.get("access_token"):
                 self._auth_token = login_data["access_token"]
                 self._zm_version = login_data.get("version")
                 self._alarm_states = get_api_alarm_states(self._zm_version)
                 return True
-            except KeyError:
-                # Try legacy auth below
-                pass
+            _LOGGER.debug("No JWT in login response, trying legacy auth")
+        else:
+            _raise_if_unavailable(req)
+            if req.status_code == 401:
+                # The JWT and legacy logins check the same user table, so a
+                # second attempt with the same credentials would also fail.
+                _LOGGER.error("ZoneMinder rejected the login credentials (HTTP 401)")
+                return False
+            _LOGGER.debug("JWT login returned HTTP %s, trying legacy auth", req.status_code)
 
         return self._legacy_auth()
 
@@ -103,6 +131,8 @@ class ZoneMinder:
             data=login_post,
             timeout=ZoneMinder.DEFAULT_TIMEOUT,
         )
+        if not req.ok:
+            _raise_if_unavailable(req)
 
         # Session stores cookies automatically from the login response.
 
@@ -115,14 +145,24 @@ class ZoneMinder:
         )
 
         if not req.ok:
-            _LOGGER.error("Connection error logging into ZoneMinder")
+            _raise_if_unavailable(req)
+            if req.status_code in (401, 403):
+                _LOGGER.error(
+                    "ZoneMinder rejected the login credentials (HTTP %s)", req.status_code
+                )
+            else:
+                _LOGGER.error(
+                    "Unexpected HTTP %s from ZoneMinder while logging in", req.status_code
+                )
             return False
 
-        try:
-            self._zm_version = req.json().get("version")
-        except (ValueError, KeyError):
-            pass
+        version_data = _json_object(req)
+        if version_data is None:
+            # A 200 that isn't the ZM API, e.g. a proxy or SSO login page.
+            _LOGGER.error("ZoneMinder login check did not return API data")
+            return False
 
+        self._zm_version = version_data.get("version")
         self._alarm_states = get_api_alarm_states(self._zm_version)
         return True
 
@@ -151,7 +191,8 @@ class ZoneMinder:
                     timeout=timeout,
                 )
 
-                if req.ok:
+                # Only an auth failure can be fixed by logging in again.
+                if req.ok or req.status_code not in (401, 403):
                     break
                 if attempt < ZoneMinder.LOGIN_RETRIES - 1:
                     _LOGGER.debug(
@@ -163,7 +204,7 @@ class ZoneMinder:
                     login_ok = self.login()
                     _LOGGER.debug("Re-login succeeded: %s", login_ok)
 
-            else:
+            if not req.ok:
                 _LOGGER.error(
                     "Unable to get API response from ZoneMinder: %s %s → HTTP %s",
                     method.upper(),
