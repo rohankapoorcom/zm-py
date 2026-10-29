@@ -57,19 +57,41 @@ PTZ on non-controllable monitors).
 
 ### Dual auth
 
-JWT authentication (ZM 1.30+) with automatic fallback to legacy session cookies:
+JWT authentication (ZM 1.34+) with automatic fallback to legacy session cookies.
+ZoneMinder doesn't issue a JWT when auth is turned off (200 with no token) or when
+`AUTH_HASH_SECRET` isn't set (403), so those servers, and ZM < 1.34, log in
+through the cookie fallback.
+
+`login()` returns `False` only when the credentials are rejected. When the server
+can't be reached, or answers with a 5xx or 429, it raises
+`requests.ConnectionError`. Home Assistant catches that, so an outage doesn't look
+like a wrong password.
 
 ```mermaid
 flowchart TD
     A["login()"] --> B["Clear stale JWT token"]
     B --> C["POST api/host/login.json"]
-    C --> D{"access_token<br/>in response?"}
-    D -->|Yes| E["Store JWT token<br/>return True"]
-    D -->|No| F["_legacy_auth()"]
-    F --> G["POST index.php<br/>(cookies stored in Session)"]
-    G --> H["GET api/host/getVersion.json<br/>(verify cookies work)"]
-    H --> I["return True/False"]
+    C --> D{"HTTP status?"}
+    D -->|2xx| E{"JSON object with<br/>access_token?"}
+    E -->|Yes| F["Store JWT token<br/>return True"]
+    E -->|No| L["_legacy_auth()"]
+    D -->|401| R["Credentials rejected<br/>return False"]
+    D -->|"5xx / 429"| X["raise ConnectionError"]
+    D -->|"Other 4xx"| L
+    L --> G["POST index.php<br/>(cookies stored in Session)"]
+    G -->|"5xx / 429"| X
+    G -->|Otherwise| H["GET api/host/getVersion.json<br/>(verify cookies work)"]
+    H --> I{"HTTP status?"}
+    I -->|2xx| J{"JSON object?"}
+    J -->|Yes| K["Store version<br/>return True"]
+    J -->|"No (e.g. proxy login page)"| N["return False"]
+    I -->|"401 / 403"| R
+    I -->|"5xx / 429"| X
+    I -->|"Other 4xx"| N
 ```
+
+A 401 from `login.json` skips the cookie fallback. Both logins check the same
+user table, so a second attempt would fail too and send the password twice.
 
 Stale JWT tokens are cleared before re-auth to prevent 401s when falling back
 to cookie auth (the session would send both the stale `?token=` and valid cookies,
@@ -100,13 +122,18 @@ flowchart TD
 ```mermaid
 flowchart TD
     A["_zm_request(method, url, data)"] --> B["Send request<br/>with token or cookies"]
-    B --> C{"req.ok?"}
-    C -->|Yes| D["return req.json()"]
-    C -->|No| E{"Last attempt?"}
+    B --> C{"HTTP status?"}
+    C -->|2xx| D["return req.json()<br/>({} if not JSON)"]
+    C -->|"401 / 403"| E{"Last attempt?"}
     E -->|No| F["login() — re-authenticate"]
     F --> B
     E -->|Yes| G["log error, return {}"]
+    C -->|"Any other error"| G
 ```
+
+Only an auth failure gets a re-login and retry. A 404 or 5xx can't be fixed by
+logging in again, so it returns `{}` straight away. Connection errors and
+timeouts, including ones raised by the re-login, are logged and return `{}`.
 
 ## Caching Strategy
 

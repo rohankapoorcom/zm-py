@@ -59,7 +59,7 @@ poetry install
 
 - **Client-based construction**: `Monitor`, `RunState`, and (indirectly) `Server` hold or are fetched through a client reference so they can make API calls on demand.
 - **Defensive error handling**: Most API errors return empty dict/None rather than raising exceptions. Callers must check for falsy values.
-- **Dual auth**: JWT (ZM 1.30+) with automatic fallback to legacy session cookies. Stale JWT tokens are cleared before re-auth to prevent 401s when falling back to cookie auth.
+- **Dual auth**: JWT (ZM 1.34+) with automatic fallback to legacy session cookies, which servers with auth turned off, servers without an `AUTH_HASH_SECRET`, and ZM < 1.34 rely on. Stale JWT tokens are cleared before re-auth to prevent 401s when falling back to cookie auth.
 - **Version-aware monitor fields**: On ZM >= 1.37, the `function` property reads/writes the decomposed `Capturing`/`Analysing`/`Recording` columns instead of the legacy `Function` column.
 - **Bulk update**: `update_all_monitors()` refreshes all monitors in a single API call instead of one call per monitor. Individual `update_monitor()` results are cached for 1 second.
 - **Stream params**: `stream_scale` and `stream_maxfps` are passed at client construction and injected into all monitor image URLs.
