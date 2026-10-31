@@ -534,6 +534,163 @@ class TestLoginConnectionError:
             c._legacy_auth()
 
 
+def _response(status: int, body: str = "{}") -> requests.Response:
+    """Build a real Response so .ok and .json() behave like a live server."""
+    resp = requests.Response()
+    resp.status_code = status
+    resp._content = body.encode()
+    return resp
+
+
+def _login_client(jwt, legacy_post=None, get_version=None) -> tuple[ZoneMinder, MagicMock]:
+    """Client whose JWT POST, legacy POST and getVersion GET return the given responses."""
+    c = _client()
+    c._session = MagicMock()
+    # Response is falsy for error statuses, so compare to None rather than using `or`.
+    if legacy_post is None:
+        legacy_post = _response(200, "")
+    if get_version is None:
+        get_version = _response(200, '{"version": "1.36.0"}')
+    c._session.post.side_effect = [jwt, legacy_post]
+    c._session.get.return_value = get_version
+    return c, c._session
+
+
+class TestLoginMalformedBody:
+    """login() should never raise on a body it can't parse."""
+
+    @pytest.mark.parametrize("body", ["<html>proxy login</html>", "[]", '"token"', "null"])
+    def test_jwt_body_not_an_object_falls_back_to_legacy(self, body):
+        """A 200 from login.json that isn't a JSON object should try legacy auth."""
+        c, session = _login_client(_response(200, body))
+        assert c.login() is True
+        assert c._auth_token is None
+        assert c.zm_version == "1.36.0"
+        assert session.post.call_count == 2
+
+    def test_jwt_without_access_token_falls_back_to_legacy(self):
+        """A JSON login response with no access_token should try legacy auth."""
+        c, session = _login_client(_response(200, '{"version": "1.32.0"}'))
+        assert c.login() is True
+        assert session.post.call_count == 2
+
+    @pytest.mark.parametrize("body", ["<html>proxy login</html>", "[]"])
+    def test_legacy_version_not_an_object_returns_false(self, body):
+        """A getVersion 200 that isn't API data means we aren't logged in."""
+        c, _ = _login_client(_response(404), get_version=_response(200, body))
+        assert c.login() is False
+
+    def test_relogin_with_html_body_does_not_raise(self):
+        """_zm_request should survive a re-login that gets an HTML page back."""
+        c = _client()
+        c._session = MagicMock()
+        c._session.request.return_value = _response(401)
+        c._session.post.return_value = _response(200, "<html/>")
+        c._session.get.return_value = _response(200, "<html/>")
+        assert c.get_state("api/monitors.json") == {}
+
+
+class TestLoginHttpStatus:
+    """login() should tell bad credentials apart from an unavailable server."""
+
+    def test_jwt_success(self):
+        """A JWT login stores the token and doesn't touch legacy auth."""
+        c, session = _login_client(_response(200, '{"access_token": "abc", "version": "1.38.0"}'))
+        assert c.login() is True
+        assert c._auth_token == "abc"
+        assert c.zm_version == "1.38.0"
+        assert session.post.call_count == 1
+
+    def test_jwt_401_returns_false_without_legacy_attempt(self):
+        """Rejected credentials shouldn't be sent a second time to index.php."""
+        c, session = _login_client(_response(401))
+        assert c.login() is False
+        assert session.post.call_count == 1
+        session.get.assert_not_called()
+
+    @pytest.mark.parametrize("status", [400, 403, 404, 405])
+    def test_jwt_other_4xx_falls_back_to_legacy(self, status):
+        """No usable JWT endpoint (e.g. ZM < 1.30) should use legacy auth."""
+        c, session = _login_client(_response(status))
+        assert c.login() is True
+        assert c._auth_token is None
+        assert session.post.call_count == 2
+
+    @pytest.mark.parametrize("status", [429, 500, 502, 503, 504])
+    def test_jwt_unavailable_raises(self, status):
+        """Server errors on login.json mean the server is down, not bad credentials."""
+        c, session = _login_client(_response(status))
+        with pytest.raises(requests.exceptions.ConnectionError, match=str(status)) as exc:
+            c.login()
+        assert exc.value.response.status_code == status
+        assert session.post.call_count == 1
+
+    @pytest.mark.parametrize("status", [429, 500, 502])
+    def test_legacy_post_unavailable_raises(self, status):
+        """A server error from index.php should raise, not be ignored."""
+        c, session = _login_client(_response(404), legacy_post=_response(status))
+        with pytest.raises(requests.exceptions.ConnectionError):
+            c.login()
+        session.get.assert_not_called()
+
+    @pytest.mark.parametrize("status", [429, 500, 502])
+    def test_legacy_get_version_unavailable_raises(self, status):
+        """A server error from getVersion should raise, not look like bad credentials."""
+        c, _ = _login_client(_response(404), get_version=_response(status))
+        with pytest.raises(requests.exceptions.ConnectionError):
+            c.login()
+
+    @pytest.mark.parametrize("status", [401, 403])
+    def test_legacy_rejected_returns_false(self, status, caplog):
+        """Rejected legacy credentials return False and log the status."""
+        c, _ = _login_client(_response(404), get_version=_response(status))
+        with caplog.at_level(logging.ERROR, logger="zoneminder.zm"):
+            assert c.login() is False
+        assert "rejected the login credentials" in caplog.text
+        assert str(status) in caplog.text
+        assert "Connection error" not in caplog.text
+
+    def test_legacy_get_version_404_returns_false(self, caplog):
+        """A wrong server path returns False and logs the status."""
+        c, _ = _login_client(_response(404), get_version=_response(404))
+        with caplog.at_level(logging.ERROR, logger="zoneminder.zm"):
+            assert c.login() is False
+        assert "Unexpected HTTP 404" in caplog.text
+
+
+class TestRequestRelogin:
+    """_zm_request should only log in again when the failure is an auth failure."""
+
+    @pytest.mark.parametrize("status", [404, 500, 502])
+    def test_non_auth_failure_does_not_relogin(self, status):
+        """A 404 or 5xx can't be fixed by logging in, so don't."""
+        c = _client()
+        c._session = MagicMock()
+        c._session.request.return_value = _response(status)
+        with patch.object(c, "login") as mock_login:
+            assert c.get_state("api/monitors.json") == {}
+        mock_login.assert_not_called()
+        assert c._session.request.call_count == 1
+
+    @pytest.mark.parametrize("status", [401, 403])
+    def test_auth_failure_relogins_and_retries(self, status):
+        """An expired session gets one re-login and one retry."""
+        c = _client()
+        c._session = MagicMock()
+        c._session.request.side_effect = [_response(status), _response(200, '{"ok": 1}')]
+        with patch.object(c, "login", return_value=True) as mock_login:
+            assert c.get_state("api/monitors.json") == {"ok": 1}
+        mock_login.assert_called_once()
+
+    def test_relogin_server_error_returns_empty(self):
+        """If re-login hits a 5xx, the request returns {} instead of raising."""
+        c = _client()
+        c._session = MagicMock()
+        c._session.request.return_value = _response(401)
+        c._session.post.return_value = _response(503)
+        assert c.get_state("api/monitors.json") == {}
+
+
 # ---------------------------------------------------------------------------
 # get_servers
 # ---------------------------------------------------------------------------
