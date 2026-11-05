@@ -490,9 +490,13 @@ class TestMonitorIsAvailable:
         mon, _ = self._make_available_monitor({"status": True}, capture_fps="0.00")
         assert mon.is_available is False
 
-    def test_unavailable_when_no_monitor_status(self):
-        """Without Monitor_Status, should be unavailable."""
+    def test_available_when_no_monitor_status_and_daemon_running(self):
+        """ZM before 1.32.3 has no Monitor_Status: the daemon status decides."""
         mon, _ = self._make_available_monitor({"status": True}, has_monitor_status=False)
+        assert mon.is_available is True
+
+    def test_unavailable_when_no_monitor_status_and_daemon_not_running(self):
+        mon, _ = self._make_available_monitor({"status": False}, has_monitor_status=False)
         assert mon.is_available is False
 
     def test_unavailable_when_no_response(self):

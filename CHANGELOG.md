@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Legacy ZoneMinder
+
+- On ZoneMinder before 1.32.3, which has no `Monitor_Status`, `Monitor.is_available` follows the zmc daemon status again instead of always returning `False`, as up to 0.5.4. Home Assistant 2026.11 showed every camera and sensor of such a server as unavailable. These versions are unsupported and get no security fixes; upgrading to ZoneMinder 1.38 is recommended. (#93)
+
 ## 0.5.10 (2026-10-31)
 
 ### Behaviour change
