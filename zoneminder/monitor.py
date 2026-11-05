@@ -427,10 +427,10 @@ class Monitor:
 
         self.update_monitor()
 
-        # Monitor_Status was only added in ZM 1.32.3
+        # Monitor_Status was only added in ZM 1.32.3; older servers only have the daemon status
         monitor_status = self._raw_result.get("Monitor_Status", None)
-        if not monitor_status:
-            return False
+        if monitor_status is None:
+            return status_response.get("status", False)
         capture_fps = monitor_status.get("CaptureFPS", "0.00")
 
         return status_response.get("status", False) and capture_fps != "0.00"
