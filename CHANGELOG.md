@@ -1,10 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.5.12 (2026-11-05)
 
 ### Legacy ZoneMinder
 
-- `login()` logs in through the web login again on ZoneMinder before 1.34 with authentication on. Their API answers every API login with a "User not found" 401, so since 0.5.10 zm-py could not log in to ZoneMinder 1.30 or 1.31 at all. A wrong password on 1.34 and later is still sent only once. These versions are unsupported and get no security fixes; upgrading to ZoneMinder 1.38 is recommended.
+- `login()` logs in through the web login again on ZoneMinder before 1.34 with authentication on. Their API answers every API login with a "User not found" 401, so since 0.5.10 zm-py could not log in to ZoneMinder 1.30 or 1.31 at all. A wrong password on 1.34 and later is still sent only once. These versions are unsupported and get no security fixes; upgrading to ZoneMinder 1.38 is recommended. (#96)
+
+[Full diff](https://github.com/rohankapoorcom/zm-py/compare/v0.5.11...v0.5.12)
 
 ## 0.5.11 (2026-11-05)
 
