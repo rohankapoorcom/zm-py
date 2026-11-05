@@ -358,6 +358,10 @@ class TestLoginResponse:
             verify=_get("ZM_VERIFY_SSL", "false").lower() in ("1", "true", "yes"),
             timeout=10,
         )
+        if r.status_code == 404 or (r.status_code == 401 and "User not found" in r.text):
+            # ZoneMinder 1.30/1.31 have no host/login: 404 with auth off, and with auth on
+            # the old API's "User not found" 401 for any user/pass pair
+            pytest.skip(f"no API login endpoint on this server (HTTP {r.status_code})")
         assert r.ok
         body = r.json()
         logger.info("Login response keys: %s", sorted(body.keys()))

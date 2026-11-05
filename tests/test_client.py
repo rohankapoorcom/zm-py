@@ -608,6 +608,36 @@ class TestLoginHttpStatus:
         assert session.post.call_count == 1
         session.get.assert_not_called()
 
+    OLD_API_401 = (
+        '{"success": false, "data": {"name": "User not found", "message": "User not found",'
+        ' "url": "/zm/api/host/login.json", "exception": {"class": "UnauthorizedException", "code": 401}}}'
+    )
+    NEW_API_401 = (
+        '{"success": false, "data": {"name": "Invalid username or password",'
+        ' "message": "Invalid username or password", "url": "/zm/api/host/login.json"}}'
+    )
+
+    def test_old_api_401_falls_back_to_legacy(self):
+        """ZoneMinder before 1.34 answers every API login with this 401; the web login decides."""
+        c, session = _login_client(_response(401, self.OLD_API_401),
+                                   get_version=_response(200, '{"version": "1.30.4"}'))
+        assert c.login() is True
+        assert c.zm_version == "1.30.4"
+        assert session.post.call_count == 2
+
+    def test_old_api_401_wrong_password_returns_false(self):
+        """On an old server a wrong password still fails, through the legacy check."""
+        c, session = _login_client(_response(401, self.OLD_API_401), get_version=_response(401))
+        assert c.login() is False
+        assert session.post.call_count == 2
+
+    def test_new_api_401_returns_false_without_legacy_attempt(self):
+        """A 1.34+ wrong-password 401 is still not retried through index.php."""
+        c, session = _login_client(_response(401, self.NEW_API_401))
+        assert c.login() is False
+        assert session.post.call_count == 1
+        session.get.assert_not_called()
+
     @pytest.mark.parametrize("status", [400, 403, 404, 405])
     def test_jwt_other_4xx_falls_back_to_legacy(self, status):
         """No usable JWT endpoint (e.g. ZM < 1.30) should use legacy auth."""
