@@ -36,6 +36,19 @@ def _json_object(req: requests.Response) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
+def _old_api_rejection(req: requests.Response) -> bool:
+    """Tell whether a 401 comes from the API of ZoneMinder before 1.34.
+
+    Before 1.34 the API compares the posted ``pass`` with the stored password hash and
+    answers "User not found" when they differ, so a correct password gets this 401 too;
+    1.30 and 1.31 have no ``host/login`` at all. Newer versions answer a wrong password
+    with "Invalid username or password".
+    """
+    data = _json_object(req)
+    body = data.get("data") if data else None
+    return isinstance(body, dict) and body.get("message") == "User not found"
+
+
 class ZoneMinder:
     """The ZoneMinder API client itself. Create one of these to begin."""
 
@@ -110,6 +123,11 @@ class ZoneMinder:
             _LOGGER.debug("No JWT in login response, trying legacy auth")
         else:
             _raise_if_unavailable(req)
+            if req.status_code == 401 and _old_api_rejection(req):
+                # ZoneMinder before 1.34 rejects every API login this way; its web
+                # login still checks the password properly.
+                _LOGGER.debug("API login refused by ZoneMinder before 1.34, trying legacy auth")
+                return self._legacy_auth()
             if req.status_code == 401:
                 # The JWT and legacy logins check the same user table, so a
                 # second attempt with the same credentials would also fail.
